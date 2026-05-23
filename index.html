@@ -226,6 +226,80 @@ body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color
 .tip-title { font-size:.67rem; font-weight:700; margin-bottom:7px; }
 .tip-item { font-size:.63rem; color:var(--muted); padding:2px 0 2px 10px; position:relative; }
 .tip-item::before { content:'·'; position:absolute; left:2px; }
+
+/* ── Pipeline ── */
+.pl-empty{font-size:.72rem;color:var(--dim);padding:14px 0;text-align:center;border:1px dashed var(--border);border-radius:8px;}
+.pl-item{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer;}
+.pl-item:last-child{border-bottom:none;}
+.pl-cb{width:18px;height:18px;border-radius:5px;border:2px solid var(--border-lt);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.6rem;transition:.15s;margin-top:1px;}
+.pl-cb.done{background:var(--green);border-color:var(--green);color:#000;}
+.pl-text{flex:1;min-width:0;}
+.pl-name{font-size:.76rem;font-weight:500;transition:.2s;}
+.pl-name.done{text-decoration:line-through;color:var(--dim);}
+.pl-sub{font-size:.62rem;color:var(--muted);margin-top:1px;}
+.pl-badge{font-size:.52rem;padding:1px 6px;border-radius:99px;font-weight:700;flex-shrink:0;margin-top:2px;}
+.save-day-btn{width:100%;padding:10px 16px;border:none;border-radius:8px;background:linear-gradient(135deg,#0ea5e9,#6366f1);color:#fff;font-size:.78rem;font-weight:700;cursor:pointer;margin-top:12px;transition:.15s;letter-spacing:.02em;}
+.save-day-btn:hover{opacity:.88;transform:translateY(-1px);}
+.save-day-btn:active{transform:none;}
+/* ── Picker ── */
+.picker-wrap{margin-top:4px;}
+.picker-group{margin-bottom:8px;border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+.picker-group-hdr{padding:8px 12px;background:var(--card-alt);font-size:.7rem;font-weight:700;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;}
+.picker-group-hdr:hover{background:var(--card-hov);}
+.picker-chapters{padding:4px 8px;}
+.picker-row{display:flex;align-items:center;gap:8px;padding:5px 4px;border-radius:5px;cursor:pointer;transition:.12s;}
+.picker-row:hover{background:var(--card-hov);}
+.picker-cb{width:15px;height:15px;border-radius:3px;border:1.5px solid var(--border-lt);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.5rem;transition:.15s;}
+.picker-cb.sel{background:var(--accent);border-color:var(--accent);color:#000;}
+.picker-label{font-size:.72rem;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.picker-label.done-item{color:var(--dim);text-decoration:line-through;}
+/* ── History ── */
+.hist-empty{font-size:.72rem;color:var(--dim);padding:14px 0;text-align:center;}
+.hist-tbl-wrap{overflow-x:auto;border-radius:8px;border:1px solid var(--border);}
+.hist-tbl{width:100%;border-collapse:collapse;font-size:.67rem;}
+.hist-tbl th{padding:8px 12px;font-size:.6rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border);background:var(--card-alt);white-space:nowrap;text-align:left;}
+.hist-tbl th.h-date-hdr{min-width:80px;position:sticky;left:0;background:var(--card-alt);z-index:2;}
+.hist-tbl td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:top;border-right:1px solid var(--border);}
+.hist-tbl td:last-child{border-right:none;}
+.hist-tbl tr:last-child td{border-bottom:none;}
+.hist-tbl tr:hover td{background:rgba(255,255,255,.03);}
+.h-date-cell{font-size:.7rem;font-weight:700;color:var(--text);white-space:nowrap;position:sticky;left:0;background:var(--card);z-index:1;}
+.h-items{display:flex;flex-direction:column;gap:3px;margin-bottom:6px;}
+.h-item{font-size:.62rem;color:var(--dim);display:flex;align-items:flex-start;gap:4px;line-height:1.35;}
+.h-item.done{color:var(--text);}
+.h-item .h-cb{flex-shrink:0;font-size:.58rem;margin-top:1px;}
+.h-item.done .h-cb{color:var(--green);}
+.h-count{font-size:.65rem;font-weight:700;border-top:1px solid var(--border);padding-top:5px;margin-top:2px;}
+.h-count.c-done{color:var(--green);}
+.h-count.c-part{color:var(--amber);}
+.h-count.c-none{color:var(--red);}
+.h-empty{color:var(--dim);font-size:.65rem;}
+.h-tot-row td{background:var(--card-alt);font-weight:700;border-top:2px solid var(--border);}
+.h-tot-row .h-date-cell{background:var(--card-alt);}
+/* ── Save Day Modal ── */
+.sdm-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.65);z-index:200;display:flex;align-items:center;justify-content:center;}
+.sdm-box{background:var(--card);border:1px solid var(--border-lt);border-radius:14px;padding:24px 28px;width:320px;box-shadow:0 24px 64px rgba(0,0,0,.5);}
+.sdm-title{font-size:.9rem;font-weight:800;margin-bottom:6px;}
+.sdm-desc{font-size:.7rem;color:var(--muted);margin-bottom:14px;}
+.sdm-date{width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--border-lt);background:var(--bg);color:var(--text);font-size:.82rem;margin-bottom:16px;font-family:inherit;}
+.sdm-btns{display:flex;gap:8px;}
+.sdm-save{flex:1;padding:10px;background:linear-gradient(135deg,#0ea5e9,#6366f1);border:none;border-radius:8px;color:#fff;font-weight:700;cursor:pointer;font-size:.78rem;}
+.sdm-cancel{flex:1;padding:10px;background:transparent;border:1px solid var(--border-lt);border-radius:8px;color:var(--muted);cursor:pointer;font-size:.78rem;}
+/* ── Picker search ── */
+.picker-search{width:100%;padding:7px 12px;border-radius:8px;border:1px solid var(--border-lt);background:var(--bg);color:var(--text);font-size:.76rem;margin-bottom:10px;font-family:inherit;}
+.picker-search:focus{outline:none;border-color:var(--accent);}
+/* ── Sub-items under goal rows ── */
+.cl-item.has-sub { flex-wrap:wrap; align-items:flex-start; }
+.cl-subitems { width:100%; padding:5px 0 2px 34px; border-top:1px solid var(--border); margin-top:6px; display:flex; flex-direction:column; gap:1px; }
+.cl-subitem { display:flex; align-items:center; gap:8px; padding:5px 8px; border-radius:6px; cursor:pointer; transition:.12s; }
+.cl-subitem:hover { background:var(--card-hov); }
+.cl-sub-cb { width:15px; height:15px; border-radius:4px; border:1.5px solid var(--border-lt); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:.5rem; color:transparent; transition:.15s; }
+.cl-sub-cb.done { background:var(--green); border-color:var(--green); color:#000; }
+.cl-sub-lbl { font-size:.7rem; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; }
+.cl-sub-lbl.done { text-decoration:line-through; color:var(--dim); }
+.cl-sub-rm { flex-shrink:0; width:16px; height:16px; border:none; background:transparent; color:var(--dim); font-size:.7rem; cursor:pointer; border-radius:3px; display:flex; align-items:center; justify-content:center; line-height:1; padding:0; opacity:0; transition:.12s; }
+.cl-subitem:hover .cl-sub-rm { opacity:1; }
+.cl-sub-rm:hover { background:rgba(248,113,113,.15); color:var(--red); }
 </style>
 </head>
 <body>
@@ -418,6 +492,11 @@ body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color
 
 <script>
 // ════════════════════════════════════════════════════════
+// HELPERS
+// ════════════════════════════════════════════════════════
+function slugify(s){return String(s).toLowerCase().replace(/[^a-z0-9]+/g,'_').slice(0,28);}
+
+// ════════════════════════════════════════════════════════
 // DATA
 // ════════════════════════════════════════════════════════
 const SHEET_ID = '1u58YRfh_mT8k7TmGiG_UKzxcS5PDL8JchCm0rjvV8_Y';
@@ -460,6 +539,9 @@ const D = {
   caseItems:    [],
   // Discussion — auto-populated by syncDontKnow()
   dontKnowItems: [],
+
+  bookItems:  [],   // [{id, book, chapter, isDone}] — chapter-level, populated by syncBooks()
+  paperItems: [],   // [{id, collection, name, isDone}] — paper-level, populated by syncPapers()
 
   work: [
     {name:'Await for EC',     icon:'🔬', type:'Research',     status:'overdue', label:'Overdue 🔴', due:'23/5/2026', css:'bg-red'},
@@ -795,7 +877,7 @@ function openPanel(key) {
         items.forEach((it, i) => {
           const k = `ov_${encodeURIComponent(it.name).slice(0,20)}_${i}`;
           const chk = getChk(k);
-          html += `<div class="d-item" onclick="toggleDrawerItem('${k}',this)">
+          html += `<div class="d-item" onclick="toggleDrawerItem('${k}',this)" data-category="${it.category}">
             <div class="d-cb${chk?' done':''}">✓</div>
             <div class="d-text">
               <div class="d-main">${it.name}</div>
@@ -829,7 +911,7 @@ function openPanel(key) {
         items.forEach((it, i) => {
           const k = `td_${encodeURIComponent(it.name).slice(0,20)}_${i}`;
           const chk = getChk(k);
-          html += `<div class="d-item" onclick="toggleDrawerItem('${k}',this)">
+          html += `<div class="d-item" onclick="toggleDrawerItem('${k}',this)" data-category="${cat}">
             <div class="d-cb${chk?' done':''}">✓</div>
             <div class="d-text">
               <div class="d-main">${it.name}</div>
@@ -867,7 +949,7 @@ function openPanel(key) {
         s.items.forEach((it, i) => {
           const k = `fr_${encodeURIComponent(it.name).slice(0,20)}_${i}`;
           const chk = getChk(k);
-          html += `<div class="d-item" onclick="toggleDrawerItem('${k}',this)">
+          html += `<div class="d-item" onclick="toggleDrawerItem('${k}',this)" data-category="Modality">
             <div class="d-cb${chk?' done':''}">✓</div>
             <div class="d-text">
               <div class="d-main">${it.name}</div>
@@ -930,7 +1012,7 @@ function openPanel(key) {
       D.dontKnowItems.forEach((it, i) => {
         const k = `dk_${encodeURIComponent(it.name).slice(0,20)}_${i}`;
         const chk = getChk(k);
-        html += `<div class="d-item" onclick="toggleDrawerItem('${k}',this)">
+        html += `<div class="d-item" onclick="toggleDrawerItem('${k}',this)" data-category="Don't Know Topics">
           <div class="d-cb${chk?' done':''}">✓</div>
           <div class="d-text">
             <div class="d-main">${it.name}</div>
@@ -1039,6 +1121,18 @@ function toggleDrawerItem(k, el) {
   const nowDone = !cb.classList.contains('done');
   setChk(k, nowDone);
   cb.classList.toggle('done', nowDone);
+  // Sync overdue/today/freshness/dontknow items to pipeline
+  if(k.startsWith('ov_') || k.startsWith('td_') || k.startsWith('fr_') || k.startsWith('dk_')) {
+    const name     = el.querySelector('.d-main')?.textContent?.trim() || k;
+    const sub      = el.querySelector('.d-sub')?.textContent?.trim()  || '';
+    const category = el.dataset.category || '';
+    const type = k.startsWith('ov_') ? 'overdue'
+               : k.startsWith('td_') ? 'today'
+               : k.startsWith('fr_') ? 'freshness'
+               : 'dontknow';
+    if(nowDone) addToPipeline({id:k, type, name, sub, category});
+    else        removeFromPipeline(k);
+  }
 }
 
 function markAllDone() {
@@ -1078,6 +1172,25 @@ function syncBooks() {
       if(prog.toLowerCase().includes('done')) map[book].done++;
     }
     D.books = Object.entries(map).map(([name, d]) => ({name, done:d.done, total:d.total, color:'#38bdf8'}));
+
+    // Populate D.bookItems (chapter-level)
+    D.bookItems = [];
+    for(const row of (resp.table?.rows || [])) {
+      if(!row?.c) continue;
+      const book    = row.c[2]?.v;
+      const chapter = row.c[4]?.v;
+      if(!book || typeof book !== 'string' || book === 'Book') continue;
+      if(!chapter || typeof chapter !== 'string' || chapter.trim() === '') continue;
+      const prog  = String(row.c[7]?.v || '');
+      const isDone = prog.toLowerCase().includes('done');
+      D.bookItems.push({
+        id:      'bk_' + slugify(book) + '_' + slugify(chapter),
+        book:    book,
+        chapter: chapter,
+        isDone:  isDone,
+      });
+    }
+
     renderBars('book-bars', D.books);
     const bc = document.getElementById('book-count');
     if(bc) bc.textContent = `${D.books.length} books`;
@@ -1101,6 +1214,27 @@ function syncPapers() {
       if(prog.toLowerCase().includes('done')) map[col].done++;
     }
     D.papers = Object.entries(map).map(([name, d]) => ({name, done:d.done, total:d.total, color:'#a78bfa'}));
+
+    // Populate D.paperItems (paper-level)
+    D.paperItems = [];
+    for(const row of (resp.table?.rows || [])) {
+      if(!row?.c) continue;
+      const collection = row.c[2]?.v;
+      if(!collection || typeof collection !== 'string' || collection === 'Collections') continue;
+      const rawName = row.c[4]?.v;
+      if(!rawName || typeof rawName !== 'string' || rawName.trim() === '') continue;
+      const name   = rawName.replace(/\s*\(https?:\/\/[^)]+\)/g,'').trim();
+      if(!name) continue;
+      const prog   = String(row.c[7]?.v || '');
+      const isDone = prog.toLowerCase().includes('done');
+      D.paperItems.push({
+        id:         'pp_' + slugify(collection) + '_' + slugify(name),
+        collection: collection,
+        name:       name,
+        isDone:     isDone,
+      });
+    }
+
     renderBars('paper-bars', D.papers);
     const pc = document.getElementById('paper-count');
     if(pc) pc.textContent = `${D.papers.length} collections`;
@@ -1157,7 +1291,8 @@ function syncLog() {
 
       for(const row of (resp.table?.rows || [])) {
         if(!row?.c) continue;
-        const name     = row.c[0]?.v;
+        const rawName  = row.c[0]?.v;
+        const name     = typeof rawName === 'string' ? rawName.replace(/\s*\(https?:\/\/[^)]+\)/g,'').trim() : rawName;
         const rawDate  = row.c[1]?.v;   // gviz: "Date(Y,M,D)"  — month is 0-indexed
         const category = String(row.c[2]?.v || '—');
         const isDone   = row.c[3]?.v;   // true / false / null
@@ -1300,14 +1435,18 @@ function syncCases() {
 function syncDontKnow() {
   gvizFetch('Don\'t know topic', function(resp) {
     try {
+      const seen = new Set();
       const items = [];
       for(const row of (resp.table?.rows || [])) {
         if(!row?.c) continue;
-        const name   = row.c[1]?.v;                              // column B
-        const status = String(row.c[4]?.v || '').toLowerCase();  // column E
+        const name   = row.c[1]?.v;                              // column B (Topic)
+        const status = String(row.c[3]?.v || '').toLowerCase();  // column D (Status)
         if(!name || typeof name !== 'string') continue;
-        if(status !== 'pending') continue;                        // only pending
-        items.push({ name });
+        if(!status.includes('pending')) continue;                 // "⭕ Pending" etc
+        const key = name.trim().toLowerCase();
+        if(seen.has(key)) continue;
+        seen.add(key);
+        items.push({ name: name.trim() });
       }
       D.dontKnowItems = items;
       D.kpi.dontKnow  = items.length;
@@ -1406,6 +1545,7 @@ function adjTarget(key, def, delta) {
 // ════════════════════════════════════════════════════════
 function todayKey() {
   const d = new Date();
+  d.setHours(d.getHours() - 2); // reset at 2 AM, not midnight
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 }
 function weekKey() {
@@ -1438,10 +1578,12 @@ function toggleActive(el) {
 // ════════════════════════════════════════════════════════
 function clPct(done, total) { return total > 0 ? Math.min(100, Math.round(done / total * 100)) : 0; }
 
-function clRowHTML(icon, label, sublabel, done, total, key, type, color) {
+function clRowHTML(icon, label, sublabel, done, total, key, type, color, subItems=[]) {
   const p  = clPct(done, total);
   const ok = done >= total && total > 0;
-  return `<div class="cl-item">
+  const hasSub = Array.isArray(subItems) && subItems.length > 0;
+  const subHTML = hasSub ? `<div class="cl-subitems">${subItems.map(it=>{const sid=it.id.replace(/\\/g,'\\\\').replace(/'/g,"\\'");return`<div class="cl-subitem" onclick="togglePipelineItem('${sid}')"><div class="cl-sub-cb${it.done?' done':''}">✓</div><span class="cl-sub-lbl${it.done?' done':''}">${it.name}</span><button class="cl-sub-rm" onclick="event.stopPropagation();removeFromPipeline('${sid}')" title="Remove">×</button></div>`;}).join('')}</div>` : '';
+  return `<div class="cl-item${hasSub?' has-sub':''}">
     <div class="cl-icon">${icon}</div>
     <div class="cl-body">
       <div class="cl-label">${label}${ok?' <span style="color:var(--green);font-size:.6rem">✓</span>':''}</div>
@@ -1451,10 +1593,7 @@ function clRowHTML(icon, label, sublabel, done, total, key, type, color) {
       <div class="cl-bar-bg"><div class="cl-bar-fill" style="width:${p}%;background:${color}"></div></div>
       <div class="cl-count" style="color:${color}">${done}&thinsp;/&thinsp;${total}</div>
     </div>
-    <div class="cl-adj">
-      <button class="cl-adj-btn" onclick="logProgress('${key}','${type}',-1)" title="Undo 1">−</button>
-      <button class="cl-adj-btn" onclick="logProgress('${key}','${type}',1)"  title="+1 done" style="background:${ok?'rgba(74,222,128,.15)':''}">+</button>
-    </div>
+    ${subHTML}
   </div>`;
 }
 
@@ -1503,12 +1642,132 @@ function tipCardHTML(title, items, color) {
   </div>`;
 }
 
+// ═══════════════════════════════════════════
+// PIPELINE — today's task list (localStorage)
+// ═══════════════════════════════════════════
+function plKey(){return LS+'pipeline_'+todayKey();}
+function getPipeline(){try{return JSON.parse(localStorage.getItem(plKey())||'[]');}catch{return[];}}
+function setPipeline(arr){localStorage.setItem(plKey(),JSON.stringify(arr));}
+function addToPipeline(item){
+  const pl=getPipeline();
+  if(pl.find(x=>x.id===item.id))return;
+  pl.push({...item,done:false,addedAt:Date.now()});
+  setPipeline(pl);
+  if(document.getElementById('tab-checklist')?.style.display!=='none')renderChecklist();
+}
+function removeFromPipeline(id){
+  const pl=getPipeline();
+  const it=pl.find(x=>x.id===id);
+  // If item was already checked, decrement its goal counter
+  if(it?.done){
+    const gm={overdue:{key:'overdue',pt:'daily'},today:{key:'today',pt:'daily'},book:{key:'book',pt:'daily'},paper:{key:'paper',pt:'daily'},freshness:{key:'freshness',pt:'weekly'},dontknow:{key:'dontknow',pt:'weekly'}};
+    const g=gm[it.type];
+    if(g){if(g.pt==='daily')setDailyCount(g.key,Math.max(0,getDailyCount(g.key)-1));else setWeeklyCount(g.key,Math.max(0,getWeeklyCount(g.key)-1));}
+  }
+  setPipeline(pl.filter(x=>x.id!==id));
+  if(document.getElementById('tab-checklist')?.style.display!=='none')renderChecklist();
+}
+function togglePipelineItem(id){
+  const pl=getPipeline();
+  const it=pl.find(x=>x.id===id);
+  if(!it)return;
+  it.done=!it.done;
+  setPipeline(pl);
+  const goalMap={overdue:{key:'overdue',ptype:'daily'},today:{key:'today',ptype:'daily'},book:{key:'book',ptype:'daily'},paper:{key:'paper',ptype:'daily'},freshness:{key:'freshness',ptype:'weekly'},dontknow:{key:'dontknow',ptype:'weekly'}};
+  const g=goalMap[it.type];
+  if(g){if(it.done)logProgress(g.key,g.ptype,1);else logProgress(g.key,g.ptype,-1);}
+  else renderChecklist();
+}
+function togglePickerItem(id,type,name,sub){
+  const pl=getPipeline();
+  if(pl.find(x=>x.id===id)){removeFromPipeline(id);}
+  else{addToPipeline({id,type,name,sub,category:sub});}
+}
+
+// ═══════════════════════════════════════════
+// HISTORY — saved day logs
+// ═══════════════════════════════════════════
+const HIST_KEY=LS+'history';
+function getHistory(){try{return JSON.parse(localStorage.getItem(HIST_KEY)||'[]');}catch{return[];}}
+function setHistory(arr){localStorage.setItem(HIST_KEY,JSON.stringify(arr));}
+function saveDay(){
+  const pl=getPipeline();
+  if(!pl.length){alert('Add tasks to today\'s pipeline first — check items in Overdue / Due Today, or pick chapters below.');return;}
+  // Set modal date to today
+  const sd=document.getElementById('save-day-modal');
+  const di=document.getElementById('save-day-date');
+  if(di){
+    const now=new Date(); now.setHours(now.getHours()-2);
+    di.value=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+  }
+  if(sd) sd.style.display='flex';
+}
+function confirmSaveDay(){
+  const pl=getPipeline();
+  const di=document.getElementById('save-day-date');
+  const dateVal=di?.value||new Date().toISOString().slice(0,10);
+  const [y,m,d]=dateVal.split('-').map(Number);
+  const dateObj=new Date(y,m-1,d);
+  const dateStr=dateObj.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  const hist=getHistory().filter(h=>h.date!==dateVal);
+  hist.unshift({
+    date:dateVal,
+    dateStr,
+    total:pl.length,
+    doneCount:pl.filter(x=>x.done).length,
+    tasks:pl.map(x=>({name:x.name,type:x.type,sub:x.sub||'',category:x.category||'',done:x.done})),
+    savedAt:Date.now()
+  });
+  setHistory(hist.slice(0,90));
+  document.getElementById('save-day-modal').style.display='none';
+  renderChecklist();
+}
+function closeSaveDayModal(){
+  document.getElementById('save-day-modal').style.display='none';
+}
+function clearHistory(){
+  if(!confirm('Clear all history? This cannot be undone.'))return;
+  setHistory([]);renderChecklist();
+}
+function resetChecklist(){
+  if(!confirm('Reset today\'s checklist? This removes all sub-items, resets daily counts, and clears dashboard drawer checkboxes.'))return;
+  setPipeline([]);
+  ['overdue','today','book','paper','active'].forEach(k=>setDailyCount(k,0));
+  // Clear dashboard drawer checkboxes for pipeline-synced item types
+  const syncPfx=['ov_','td_','fr_','dk_'];
+  Object.keys(localStorage)
+    .filter(k=>k.startsWith(LS)&&syncPfx.some(p=>k.slice(LS.length).startsWith(p)))
+    .forEach(k=>localStorage.removeItem(k));
+  renderChecklist();
+}
+
 // ════════════════════════════════════════════════════════
 // RENDER CHECKLIST
 // ════════════════════════════════════════════════════════
+let pickerOpen = false;
+function filterPicker(q){
+  const query=q.toLowerCase().trim();
+  document.querySelectorAll('.picker-group').forEach(grp=>{
+    let any=false;
+    grp.querySelectorAll('.picker-row').forEach(row=>{
+      const txt=row.querySelector('.picker-label')?.textContent?.toLowerCase()||'';
+      const show=!query||txt.includes(query);
+      row.style.display=show?'':'none';
+      if(show)any=true;
+    });
+    if(query){
+      grp.style.display=any?'':'none';
+      if(any){const ch=grp.querySelector('.picker-chapters');if(ch)ch.style.display='';}
+    } else {
+      grp.style.display='';
+    }
+  });
+}
 function renderChecklist() {
   const el = document.getElementById('cl-content');
   if(!el) return;
+  const pl = getPipeline();
+  const plByType = t => pl.filter(x => x.type === t);
 
   // Pull targets
   const tOverdue   = getTarget('overdue',   3);
@@ -1552,7 +1811,7 @@ function renderChecklist() {
     <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px">
       <div>
         <div style="font-size:1.3rem;font-weight:800;letter-spacing:-.03em">${dayNames[today.getDay()]}</div>
-        <div style="font-size:.7rem;color:var(--muted);margin-top:3px">${dateStr} · Resets at midnight / Monday</div>
+        <div style="font-size:.7rem;color:var(--muted);margin-top:3px">${dateStr} · Resets at 2 AM / Monday</div>
       </div>
       <div style="display:flex;align-items:center;gap:16px">
         <div style="text-align:center">
@@ -1564,6 +1823,8 @@ function renderChecklist() {
           <div style="font-size:1.6rem;font-weight:800;color:${weeklyDone===weeklyTotal?'var(--green)':'var(--blue)'};line-height:1">${weeklyDone}/${weeklyTotal}</div>
           <div style="font-size:.6rem;color:var(--muted);margin-top:2px">Weekly goals</div>
         </div>
+        <button class="save-day-btn" style="width:auto;padding:8px 18px;font-size:.72rem" onclick="saveDay()">💾 Save Day</button>
+        <button onclick="resetChecklist()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--border-lt);background:transparent;color:var(--muted);font-size:.72rem;cursor:pointer;font-weight:600;transition:.15s" onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)'" onmouseout="this.style.borderColor='var(--border-lt)';this.style.color='var(--muted)'">↺ Reset</button>
       </div>
     </div>
 
@@ -1576,13 +1837,13 @@ function renderChecklist() {
         </div>
 
         ${D.kpi.today > 0
-          ? clRowHTML('📬','Due Today','items cleared today', dToday, D.kpi.today, 'today', 'daily', 'var(--orange)')
+          ? clRowHTML('📬','Due Today','items cleared today', dToday, D.kpi.today, 'today', 'daily', 'var(--orange)', plByType('today'))
           : `<div class="cl-item"><div class="cl-icon">📬</div><div class="cl-body"><div class="cl-label">Due Today <span style="color:var(--green);font-size:.6rem">✓</span></div><div class="cl-sub">Nothing due today · check back tomorrow</div></div></div>`
         }
 
-        ${clRowHTML('⚠️','Clear Overdue','items resolved today',dOverdue,tOverdue,'overdue','daily','var(--red)','overdue',3)}
-        ${clRowHTML('📖','Book Chapters','chapters read today',dBook,tBook,'book','daily','var(--accent)','book',2)}
-        ${clRowHTML('📄','Papers','papers reviewed today',dPaper,tPaper,'paper','daily','var(--purple)','paper',1)}
+        ${clRowHTML('⚠️','Clear Overdue','items resolved today',dOverdue,tOverdue,'overdue','daily','var(--red)',plByType('overdue'))}
+        ${clRowHTML('📖','Book Chapters','chapters read today',dBook,tBook,'book','daily','var(--accent)',plByType('book'))}
+        ${clRowHTML('📄','Papers','papers reviewed today',dPaper,tPaper,'paper','daily','var(--purple)',plByType('paper'))}
 
         <div class="cl-item" style="border-bottom:none">
           <div class="cl-icon">🎯</div>
@@ -1600,9 +1861,9 @@ function renderChecklist() {
           <span style="font-size:.58rem;color:var(--dim);text-transform:none;letter-spacing:0;font-weight:500">${wk}</span>
         </div>
 
-        ${clRowHTML('🩻','Cases Encountered','cases logged this week',wCases,tCases,'cases','weekly','var(--amber)','cases',5)}
-        ${clRowHTML('❓',"Don't Know Topics",'topics resolved this week',wDontKnow,tDontKnow,'dontknow','weekly','var(--orange)','dontknow',3)}
-        ${clRowHTML('🧠','Modality Freshness','freshness reviews this week',wFreshness,tFreshness,'freshness','weekly','var(--green)','freshness',3)}
+        ${clRowHTML('🩻','Cases Encountered','cases logged this week',wCases,tCases,'cases','weekly','var(--amber)')}
+        ${clRowHTML('❓',"Don't Know Topics",'topics resolved this week',wDontKnow,tDontKnow,'dontknow','weekly','var(--orange)',plByType('dontknow'))}
+        ${clRowHTML('🧠','Modality Freshness','freshness reviews this week',wFreshness,tFreshness,'freshness','weekly','var(--green)',plByType('freshness'))}
 
         <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
           <div style="font-size:.62rem;color:var(--dim);line-height:1.7">
@@ -1614,6 +1875,65 @@ function renderChecklist() {
       </div>
 
     </div><!-- /g2 -->
+
+    <!-- Pick for Today -->
+    <div class="card" style="border-top:2px solid var(--accent);margin-bottom:12px">
+      <div class="ct" style="cursor:pointer;user-select:none" onclick="pickerOpen=!pickerOpen;renderChecklist()">Pick for Today 📚
+        <span style="font-size:.7rem;color:var(--accent);margin-left:4px">${pickerOpen?'▾ collapse':'▸ expand'}</span>
+      </div>
+      ${pickerOpen ? `<input class="picker-search" type="text" placeholder="🔍 Search chapters &amp; papers…" oninput="filterPicker(this.value)">` : ''}
+      ${pickerOpen ? (()=>{
+        const pl=getPipeline();
+        const inPl=id=>!!pl.find(x=>x.id===id);
+        let html='';
+        // Books section
+        if(D.bookItems.length){
+          const books=[...new Set(D.bookItems.map(x=>x.book))];
+          html+='<div style="font-size:.63rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">📖 Books</div>';
+          html+='<div class="picker-wrap">';
+          books.forEach(function(book){
+            const chapters=D.bookItems.filter(x=>x.book===book);
+            const sel=chapters.filter(x=>inPl(x.id)).length;
+            html+='<div class="picker-group">'
+              +'<div class="picker-group-hdr" onclick="var s=this.nextElementSibling;s.style.display=s.style.display===\'none\'?\'block\':\'none\'">'
+              +'<span>'+book+'</span>'
+              +'<span style="font-size:.6rem;color:var(--muted)">'+(sel>0?sel+' selected · ':'')+''+chapters.length+' chapters ▾</span>'
+              +'</div>'
+              +'<div class="picker-chapters" style="display:none">'
+              +chapters.map(function(ch){
+                return '<div class="picker-row" onclick="togglePickerItem(\''+ch.id.replace(/'/g,"\\'")+'\',\'book\',\''+ch.chapter.replace(/'/g,"\\'")+'\',\''+book.replace(/'/g,"\\'")+'\')"><div class="picker-cb'+(inPl(ch.id)?' sel':'')+'">✓</div><span class="picker-label'+(ch.isDone?' done-item':'')+'">'+ch.chapter+'</span></div>';
+              }).join('')
+              +'</div>'
+              +'</div>';
+          });
+          html+='</div>';
+        }
+        // Papers section
+        if(D.paperItems.length){
+          const cols=[...new Set(D.paperItems.map(x=>x.collection))];
+          html+='<div style="font-size:.63rem;font-weight:700;color:var(--purple);text-transform:uppercase;letter-spacing:.06em;margin:10px 0 6px">📄 Papers</div>';
+          html+='<div class="picker-wrap">';
+          cols.forEach(function(col){
+            const papers=D.paperItems.filter(x=>x.collection===col);
+            const sel=papers.filter(x=>inPl(x.id)).length;
+            html+='<div class="picker-group">'
+              +'<div class="picker-group-hdr" onclick="var s=this.nextElementSibling;s.style.display=s.style.display===\'none\'?\'block\':\'none\'">'
+              +'<span>'+col+'</span>'
+              +'<span style="font-size:.6rem;color:var(--muted)">'+(sel>0?sel+' selected · ':'')+''+papers.length+' papers ▾</span>'
+              +'</div>'
+              +'<div class="picker-chapters" style="display:none">'
+              +papers.map(function(p){
+                return '<div class="picker-row" onclick="togglePickerItem(\''+p.id.replace(/'/g,"\\'")+'\',\'paper\',\''+p.name.replace(/'/g,"\\'")+'\',\''+col.replace(/'/g,"\\'")+'\')"><div class="picker-cb'+(inPl(p.id)?' sel':'')+'">✓</div><span class="picker-label'+(p.isDone?' done-item':'')+'">'+p.name+'</span></div>';
+              }).join('')
+              +'</div>'
+              +'</div>';
+          });
+          html+='</div>';
+        }
+        if(!D.bookItems.length&&!D.paperItems.length) html='<div style="font-size:.72rem;color:var(--dim);padding:8px 0">Click <strong style="color:var(--muted)">Sync Sheet</strong> to load chapters and papers.</div>';
+        return html;
+      })() : ''}
+    </div>
 
     <!-- Clearance Forecast -->
     <div class="card" style="border-top:2px solid var(--purple);margin-bottom:12px">
@@ -1644,6 +1964,93 @@ function renderChecklist() {
         ${tipCardHTML('📌 Overdue Strategy', ['Oldest items first (most decay)','Batch similar topics together','At '+tOverdue+'/day → clear in ~'+Math.ceil(D.kpi.overdue/Math.max(1,tOverdue))+'d'], 'var(--red)')}
       </div>
     </div>
+
+    <!-- History Log -->
+    <div class="card" style="border-top:2px solid var(--purple);margin-top:12px">
+      <div class="ct">History Log 📜
+        <button onclick="clearHistory()" style="font-size:.58rem;padding:2px 8px;border-radius:99px;border:1px solid var(--border);background:transparent;color:var(--dim);cursor:pointer;text-transform:none;letter-spacing:0;font-weight:500">Clear</button>
+      </div>
+      ${(()=>{
+        const hist=getHistory();
+        if(!hist.length) return '<div class="hist-empty">No history yet — complete tasks and hit 💾 Save Day above</div>';
+        const TC={
+          today:    {label:'Due Today',        icon:'📬',col:'var(--orange)'},
+          overdue:  {label:'Clear Overdue',    icon:'⚠️', col:'var(--red)'},
+          book:     {label:'Book Chapters',    icon:'📖',col:'var(--accent)'},
+          paper:    {label:'Papers',           icon:'📄',col:'var(--purple)'},
+          dontknow: {label:"Don't Know",       icon:'❓',col:'var(--orange)'},
+          freshness:{label:'Modality',         icon:'🧠',col:'var(--green)'},
+        };
+        const ORDER=['today','overdue','book','paper','dontknow','freshness'];
+
+        // Format date as DD/MM/YY
+        function fmtDate(ds){
+          const p=ds.split('-');if(p.length<3)return ds;
+          return p[2]+'/'+p[1]+'/'+p[0].slice(2);
+        }
+
+        // Build taskMap[dateStr][type] = [{name,done},...]
+        const rows=[...hist].reverse();
+        const taskMap={};
+        rows.forEach(function(h){
+          taskMap[h.dateStr]={};
+          h.tasks.forEach(function(t){
+            (taskMap[h.dateStr][t.type]=taskMap[h.dateStr][t.type]||[]).push(t);
+          });
+        });
+
+        // Cell: item names + count, no bars
+        function cellHTML(h, tp){
+          const items=taskMap[h.dateStr]&&taskMap[h.dateStr][tp];
+          if(!items||!items.length) return '<td><span class="h-empty">—</span></td>';
+          const dn=items.filter(function(t){return t.done;}).length;
+          const cc=dn===items.length?'c-done':dn>0?'c-part':'c-none';
+          const lines=items.map(function(t){
+            return '<div class="h-item'+(t.done?' done':'')+'"><span class="h-cb">'+(t.done?'✓':'○')+'</span>'+t.name+'</div>';
+          }).join('');
+          return '<td><div class="h-items">'+lines+'</div><div class="h-count '+cc+'">'+dn+'/'+items.length+'</div></td>';
+        }
+
+        // Column total footer
+        function footCellHTML(tp){
+          let dn=0,tot=0;
+          rows.forEach(function(h){
+            const items=taskMap[h.dateStr]&&taskMap[h.dateStr][tp];
+            if(items){tot+=items.length;dn+=items.filter(function(t){return t.done;}).length;}
+          });
+          if(!tot) return '<td><span class="h-empty">—</span></td>';
+          const cc=dn===tot?'c-done':dn>0?'c-part':'c-none';
+          return '<td><div class="h-count '+cc+'" style="border-top:none;padding-top:0">'+dn+'/'+tot+'</div></td>';
+        }
+
+        // Headers
+        const thCols=ORDER.map(function(tp){
+          const tc=TC[tp];
+          return '<th style="color:'+tc.col+'">'+tc.icon+' '+tc.label+'</th>';
+        }).join('');
+
+        // Body rows
+        const bodyRows=rows.map(function(h){
+          const tds=ORDER.map(function(tp){return cellHTML(h,tp);}).join('');
+          return '<tr><td class="h-date-cell">'+fmtDate(h.dateStr)+'</td>'+tds+'</tr>';
+        }).join('');
+
+        // Footer
+        const footTds=ORDER.map(function(tp){return footCellHTML(tp);}).join('');
+        const grandDn=rows.reduce(function(s,h){return s+h.doneCount;},0);
+        const grandTot=rows.reduce(function(s,h){return s+h.total;},0);
+        const grandCls=grandDn===grandTot?'c-done':grandDn>0?'c-part':'c-none';
+        const footRow='<tr class="h-tot-row"><td class="h-date-cell" style="font-size:.62rem;color:var(--muted)">TOTAL</td>'
+          +footTds
+          +'<td><div class="h-count '+grandCls+'" style="border-top:none;padding-top:0">'+grandDn+'/'+grandTot+'</div></td>'
+          +'</tr>';
+
+        return '<div class="hist-tbl-wrap"><table class="hist-tbl">'
+          +'<thead><tr><th class="h-date-hdr">Date</th>'+thCols+'<th>Total</th></tr></thead>'
+          +'<tbody>'+bodyRows+footRow+'</tbody>'
+          +'</table></div>';
+      })()}
+    </div>
   `;
 }
 
@@ -1656,5 +2063,17 @@ window.onload = () => {
   syncNow(document.getElementById('sync-btn'));
 };
 </script>
+<!-- Save Day Modal -->
+<div id="save-day-modal" class="sdm-overlay" style="display:none" onclick="if(event.target===this)closeSaveDayModal()">
+  <div class="sdm-box">
+    <div class="sdm-title">💾 Save Day</div>
+    <div class="sdm-desc">Choose the date for this history entry:</div>
+    <input type="date" id="save-day-date" class="sdm-date">
+    <div class="sdm-btns">
+      <button class="sdm-save" onclick="confirmSaveDay()">Save to History</button>
+      <button class="sdm-cancel" onclick="closeSaveDayModal()">Cancel</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
