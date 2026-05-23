@@ -208,6 +208,8 @@ body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color
 .cl-bar-bg { background:var(--border); border-radius:99px; height:4px; overflow:hidden; margin-bottom:3px; }
 .cl-bar-fill { height:100%; border-radius:99px; transition:width .4s ease; }
 .cl-count { font-size:.67rem; font-weight:700; text-align:center; }
+.cl-adj-btn{background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:4px;width:18px;height:18px;font-size:.7rem;line-height:1;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;}
+.cl-adj-btn:hover{border-color:var(--accent);color:var(--accent);}
 .cl-adj { display:flex; align-items:center; gap:3px; }
 .cl-adj-btn { width:20px; height:20px; border-radius:4px; border:1px solid var(--border); background:var(--card-alt); color:var(--text); cursor:pointer; font-size:.8rem; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:all .12s; }
 .cl-adj-btn:hover { background:var(--card-hov); border-color:var(--border-lt); }
@@ -1583,6 +1585,12 @@ function clRowHTML(icon, label, sublabel, done, total, key, type, color, subItem
   const ok = done >= total && total > 0;
   const hasSub = Array.isArray(subItems) && subItems.length > 0;
   const subHTML = hasSub ? `<div class="cl-subitems">${subItems.map(it=>{const sid=it.id.replace(/\\/g,'\\\\').replace(/'/g,"\\'");return`<div class="cl-subitem" onclick="togglePipelineItem('${sid}')"><div class="cl-sub-cb${it.done?' done':''}">✓</div><span class="cl-sub-lbl${it.done?' done':''}">${it.name}</span><button class="cl-sub-rm" onclick="event.stopPropagation();removeFromPipeline('${sid}')" title="Remove">×</button></div>`;}).join('')}</div>` : '';
+  const adj = type==='daily'
+    ? `logProgress('${key}','daily',-1)`
+    : `logProgress('${key}','weekly',-1)`;
+  const inc = type==='daily'
+    ? `logProgress('${key}','daily',1)`
+    : `logProgress('${key}','weekly',1)`;
   return `<div class="cl-item${hasSub?' has-sub':''}">
     <div class="cl-icon">${icon}</div>
     <div class="cl-body">
@@ -1591,7 +1599,11 @@ function clRowHTML(icon, label, sublabel, done, total, key, type, color, subItem
     </div>
     <div class="cl-bar-wrap">
       <div class="cl-bar-bg"><div class="cl-bar-fill" style="width:${p}%;background:${color}"></div></div>
-      <div class="cl-count" style="color:${color}">${done}&thinsp;/&thinsp;${total}</div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:5px;margin-top:2px">
+        <button class="cl-adj-btn" onclick="${adj}" title="−1">−</button>
+        <div class="cl-count" style="color:${color}">${done}&thinsp;/&thinsp;${total}</div>
+        <button class="cl-adj-btn" onclick="${inc}" title="+1">+</button>
+      </div>
     </div>
     ${subHTML}
   </div>`;
