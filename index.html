@@ -1,0 +1,1660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Study Tracker Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #070d18;
+  --card:      #0c1525;
+  --card-alt:  #101c2e;
+  --card-hov:  #152236;
+  --border:    #1a2840;
+  --border-lt: #223350;
+  --text:      #dde6f0;
+  --muted:     #607a94;
+  --dim:       #344d64;
+  --accent:    #38bdf8;
+  --green:     #4ade80;
+  --amber:     #fbbf24;
+  --orange:    #fb923c;
+  --red:       #f87171;
+  --blue:      #60a5fa;
+  --purple:    #a78bfa;
+  --r: 10px;
+}
+
+body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; -webkit-font-smoothing:antialiased; }
+.page { max-width:1360px; margin:0 auto; padding:0 28px 72px; }
+
+/* ── Header ── */
+.header {
+  display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
+  padding:15px 0 16px; border-bottom:1px solid var(--border); margin-bottom:20px;
+  position:sticky; top:0; z-index:50; background:var(--bg);
+}
+.logo { display:flex; align-items:center; gap:10px; }
+.logo-icon { width:32px; height:32px; border-radius:8px; background:linear-gradient(135deg,#0ea5e9,#6366f1); display:flex; align-items:center; justify-content:center; font-size:.95rem; }
+.logo-title { font-size:.95rem; font-weight:800; letter-spacing:-.025em; }
+.logo-sub   { font-size:.62rem; color:var(--muted); margin-top:1px; }
+.header-right { display:flex; align-items:center; gap:10px; }
+.last-updated { font-size:.63rem; color:var(--muted); }
+.sync-btn {
+  display:flex; align-items:center; gap:6px; font-size:.7rem; font-weight:600;
+  padding:6px 15px; border-radius:99px; border:1px solid var(--border-lt);
+  background:var(--card); color:var(--text); cursor:pointer; transition:all .15s;
+}
+.sync-btn:hover { background:var(--card-hov); border-color:var(--accent); color:var(--accent); }
+.sync-btn .spin { display:inline-block; }
+.syncing .spin { animation:spin .7s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* ── Cards ── */
+.card {
+  background:var(--card); border:1px solid var(--border); border-radius:var(--r); padding:16px 18px;
+}
+.card-btn {
+  cursor:pointer; transition:background .15s, border-color .15s;
+  background:var(--card); border:1px solid var(--border); border-radius:var(--r); padding:16px 18px;
+}
+.card-btn:hover { background:var(--card-hov); border-color:var(--border-lt); }
+.ct { display:flex; align-items:center; justify-content:space-between; font-size:.65rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-bottom:10px; }
+.ct-icon { font-size:.85rem; }
+.ct-hint { font-size:.6rem; font-weight:500; color:var(--dim); text-transform:none; letter-spacing:0; }
+
+/* ── KPI Row ── */
+.kpi-row { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:12px; }
+.kpi-val   { font-size:2.4rem; font-weight:800; letter-spacing:-.04em; line-height:1; margin-bottom:3px; }
+.kpi-label { font-size:.67rem; color:var(--muted); font-weight:500; }
+.kpi-sub   { font-size:.6rem; color:var(--dim); margin-top:4px; }
+.kpi-badge { display:inline-flex; align-items:center; gap:4px; font-size:.58rem; font-weight:700; padding:2px 7px; border-radius:99px; margin-top:8px; }
+
+/* ── Color helpers ── */
+.c-red    { color:var(--red);    } .c-orange { color:var(--orange); } .c-amber  { color:var(--amber);  }
+.c-blue   { color:var(--blue);   } .c-green  { color:var(--green);  } .c-purple { color:var(--purple); }
+.c-accent { color:var(--accent); }
+.bg-red   { background:rgba(248,113,113,.12); border-color:var(--red);    color:var(--red);    }
+.bg-orange{ background:rgba(251,146,60,.12);  border-color:var(--orange); color:var(--orange); }
+.bg-amber { background:rgba(251,191,36,.12);  border-color:var(--amber);  color:var(--amber);  }
+.bg-blue  { background:rgba(96,165,250,.12);  border-color:var(--blue);   color:var(--blue);   }
+.bg-green { background:rgba(74,222,128,.12);  border-color:var(--green);  color:var(--green);  }
+.bg-grey  { background:rgba(96,117,139,.10);  border-color:var(--dim);    color:var(--muted);  }
+
+/* ── Source Strip ── */
+.source-strip {
+  display:grid; grid-template-columns:repeat(4,1fr); gap:0;
+  background:var(--card-alt); border:1px solid var(--border); border-radius:var(--r);
+  margin-bottom:12px; overflow:hidden;
+}
+.src-item { padding:12px 16px; border-right:1px solid var(--border); }
+.src-item:last-child { border-right:none; }
+.src-head { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:7px; }
+.src-name { font-size:.7rem; font-weight:600; }
+.src-rate { font-size:.72rem; font-weight:700; }
+.src-bar-bg { background:var(--border); border-radius:99px; height:3px; overflow:hidden; margin-bottom:5px; }
+.src-bar-fill { height:100%; border-radius:99px; transition:width .6s ease; }
+.src-stat { font-size:.6rem; color:var(--muted); }
+
+/* ── Grid layouts ── */
+.g-three { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:12px; }
+.g2      { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px; }
+@media(max-width:1100px){ .g-three{ grid-template-columns:1fr 200px } }
+@media(max-width:900px) { .g-three{ grid-template-columns:1fr } .g2{ grid-template-columns:1fr } .source-strip{ grid-template-columns:repeat(2,1fr) } .source-strip .src-item:nth-child(2){ border-right:none } .source-strip .src-item:nth-child(3){ border-top:1px solid var(--border) } .source-strip .src-item:nth-child(4){ border-top:1px solid var(--border); border-right:none } }
+@media(max-width:900px) { .kpi-row{ grid-template-columns:repeat(2,1fr) } }
+@media(max-width:560px) { .kpi-row{ grid-template-columns:1fr } .source-strip{ grid-template-columns:1fr } }
+
+/* ── Progress bars ── */
+.bar-row { display:grid; grid-template-columns:minmax(110px,26%) 1fr 56px 40px; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid var(--border); }
+.bar-row:last-child { border-bottom:none; }
+.bar-name { font-size:.7rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.bar-bg   { background:var(--border); border-radius:99px; height:5px; overflow:hidden; }
+.bar-fill { height:100%; border-radius:99px; transition:width .6s ease; }
+.bar-stat { font-size:.63rem; color:var(--muted); text-align:right; white-space:nowrap; }
+.bar-rate { font-size:.68rem; font-weight:700; text-align:right; }
+
+/* ── Scrollable list ── */
+.scroll-list { max-height:390px; overflow-y:auto; padding-right:3px; }
+.scroll-list::-webkit-scrollbar { width:3px; }
+.scroll-list::-webkit-scrollbar-thumb { background:var(--dim); border-radius:2px; }
+
+/* ── Donut ── */
+.donut-wrap   { position:relative; width:200px; height:200px; margin:6px auto 14px; }
+.donut-center { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.donut-num    { font-size:2.2rem; font-weight:800; letter-spacing:-.04em; line-height:1; }
+.donut-sub    { font-size:.65rem; color:var(--muted); margin-top:3px; }
+.donut-legend { display:flex; flex-direction:column; gap:6px; }
+.donut-row    { display:flex; align-items:center; gap:8px; font-size:.68rem; color:var(--muted); }
+.donut-dot    { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+.donut-n      { margin-left:auto; font-weight:700; color:var(--text); font-size:.7rem; }
+.ct-hint-fresh { font-size:.57rem; color:var(--dim); }
+
+/* ── Active Work ── */
+.work-item { padding:10px 12px; border-radius:8px; margin-bottom:7px; background:var(--card-alt); border:1px solid var(--border); }
+.work-item:last-child { margin-bottom:0; }
+.work-top  { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:5px; }
+.work-name { font-size:.74rem; font-weight:600; line-height:1.3; }
+.work-meta { font-size:.61rem; color:var(--muted); display:flex; align-items:center; gap:6px; }
+.work-badge{ font-size:.57rem; font-weight:700; padding:2px 7px; border-radius:99px; border:1px solid; white-space:nowrap; flex-shrink:0; }
+.work-type { font-size:.59rem; color:var(--dim); background:var(--border); padding:1px 6px; border-radius:4px; }
+
+/* ── Next Steps ── */
+.action-grid { display:grid; grid-template-columns:1fr 1fr; gap:0 32px; }
+@media(max-width:800px) { .action-grid { grid-template-columns:1fr; } }
+.action-item { display:flex; align-items:flex-start; gap:9px; padding:9px 0; border-bottom:1px solid var(--border); cursor:pointer; }
+.action-item:last-child { border-bottom:none; }
+.action-item.done .action-title { text-decoration:line-through; opacity:.35; }
+.action-cb { width:15px; height:15px; border-radius:4px; border:1.5px solid var(--dim); flex-shrink:0; margin-top:2px; display:flex; align-items:center; justify-content:center; font-size:.52rem; }
+.action-cb.done { background:var(--green); border-color:var(--green); color:#000; }
+.action-icon { font-size:.88rem; flex-shrink:0; line-height:1.6; }
+.action-body { flex:1; }
+.action-title  { font-size:.74rem; font-weight:600; }
+.action-detail { font-size:.62rem; color:var(--muted); margin-top:2px; line-height:1.4; }
+.tier-critical { border-left:2px solid var(--red);    padding-left:9px; }
+.tier-high     { border-left:2px solid var(--orange); padding-left:9px; }
+.tier-medium   { border-left:2px solid var(--amber);  padding-left:9px; }
+
+/* ── Drawer ── */
+#drawer-overlay { position:fixed; inset:0; z-index:100; pointer-events:none; transition:background .25s; }
+#drawer-overlay.open { background:rgba(0,0,0,.7); pointer-events:all; }
+#drawer {
+  position:fixed; top:0; right:0; bottom:0; width:460px; max-width:100vw;
+  background:#0a1422; border-left:1px solid var(--border);
+  z-index:101; display:flex; flex-direction:column;
+  transform:translateX(100%); transition:transform .25s ease; overflow:hidden;
+}
+#drawer.open { transform:translateX(0); }
+#drawer-head { display:flex; align-items:center; justify-content:space-between; padding:16px 20px 12px; border-bottom:1px solid var(--border); flex-shrink:0; }
+#drawer-title { font-size:.9rem; font-weight:700; }
+#drawer-close { width:26px; height:26px; border-radius:6px; border:1px solid var(--border); background:transparent; color:var(--muted); cursor:pointer; font-size:.95rem; display:flex; align-items:center; justify-content:center; }
+#drawer-close:hover { background:var(--card-hov); color:var(--text); }
+#drawer-desc { font-size:.7rem; color:var(--muted); padding:10px 20px 10px; border-bottom:1px solid var(--border); flex-shrink:0; line-height:1.5; }
+#drawer-body { flex:1; overflow-y:auto; padding:12px 20px; }
+#drawer-body::-webkit-scrollbar { width:3px; }
+#drawer-body::-webkit-scrollbar-thumb { background:var(--dim); border-radius:2px; }
+#drawer-foot { padding:10px 20px; border-top:1px solid var(--border); display:flex; gap:8px; flex-shrink:0; }
+.d-foot-btn { flex:1; padding:7px; border-radius:8px; border:1px solid var(--border); background:var(--card); color:var(--muted); font-size:.68rem; font-weight:600; cursor:pointer; }
+.d-foot-btn:hover { background:var(--card-hov); color:var(--text); }
+.d-sect-hdr { display:flex; align-items:center; gap:8px; margin:12px 0 7px; font-size:.6rem; font-weight:700; letter-spacing:.07em; text-transform:uppercase; }
+.d-sect-hdr::after { content:''; flex:1; height:1px; background:var(--border); }
+.d-item { display:flex; align-items:flex-start; gap:10px; padding:7px 0; border-bottom:1px solid var(--border); cursor:pointer; transition:background .1s; }
+.d-item:last-child { border-bottom:none; }
+.d-item:hover { background:var(--card-alt); border-radius:6px; padding-left:6px; }
+.d-cb   { width:14px; height:14px; border-radius:3px; border:1.5px solid var(--dim); flex-shrink:0; margin-top:2px; display:flex; align-items:center; justify-content:center; font-size:.5rem; transition:all .15s; }
+.d-cb.done { background:var(--green); border-color:var(--green); color:#000; }
+.d-text { flex:1; min-width:0; }
+.d-main { font-size:.73rem; font-weight:500; }
+.d-sub  { font-size:.61rem; color:var(--muted); margin-top:2px; }
+
+/* ── Tab Bar ── */
+.tab-bar { display:flex; gap:0; border-bottom:1px solid var(--border); margin-bottom:20px; }
+.tab-btn { padding:9px 20px; font-size:.75rem; font-weight:600; border:none; background:transparent; color:var(--muted); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; transition:all .15s; }
+.tab-btn:hover { color:var(--text); }
+.tab-btn.tab-active { color:var(--accent); border-bottom-color:var(--accent); }
+
+/* ── Checklist ── */
+.cl-item { display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--border); }
+.cl-item:last-child { border-bottom:none; }
+.cl-icon { font-size:.95rem; width:20px; text-align:center; flex-shrink:0; }
+.cl-body { flex:1; min-width:0; }
+.cl-label { font-size:.75rem; font-weight:600; }
+.cl-sub { font-size:.61rem; color:var(--muted); margin-top:2px; }
+.cl-bar-wrap { min-width:70px; }
+.cl-bar-bg { background:var(--border); border-radius:99px; height:4px; overflow:hidden; margin-bottom:3px; }
+.cl-bar-fill { height:100%; border-radius:99px; transition:width .4s ease; }
+.cl-count { font-size:.67rem; font-weight:700; text-align:center; }
+.cl-adj { display:flex; align-items:center; gap:3px; }
+.cl-adj-btn { width:20px; height:20px; border-radius:4px; border:1px solid var(--border); background:var(--card-alt); color:var(--text); cursor:pointer; font-size:.8rem; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:all .12s; }
+.cl-adj-btn:hover { background:var(--card-hov); border-color:var(--border-lt); }
+.cl-tgt-val { font-size:.6rem; color:var(--dim); min-width:18px; text-align:center; }
+.cl-check { width:22px; height:22px; border-radius:6px; border:1.5px solid var(--dim); display:flex; align-items:center; justify-content:center; font-size:.6rem; cursor:pointer; transition:all .15s; flex-shrink:0; }
+.cl-check.done { background:var(--green); border-color:var(--green); color:#000; }
+
+/* ── Burn-down table ── */
+.cl-burn-table { margin-top:2px; }
+.cl-burn-hdr { display:grid; grid-template-columns:1.4fr 0.65fr 1.15fr 1.6fr; gap:8px; padding:5px 0 7px; font-size:.58rem; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--dim); border-bottom:1px solid var(--border); }
+.cl-burn-row { display:grid; grid-template-columns:1.4fr 0.65fr 1.15fr 1.6fr; gap:8px; padding:7px 0; border-bottom:1px solid var(--border); font-size:.71rem; align-items:center; }
+.cl-burn-row:last-child { border-bottom:none; }
+
+/* ── Tip cards ── */
+.tip-card { background:var(--card-alt); border:1px solid var(--border); border-radius:8px; padding:11px 13px; }
+.tip-title { font-size:.67rem; font-weight:700; margin-bottom:7px; }
+.tip-item { font-size:.63rem; color:var(--muted); padding:2px 0 2px 10px; position:relative; }
+.tip-item::before { content:'·'; position:absolute; left:2px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- ── Header ── -->
+<header class="header">
+  <div class="logo">
+    <div class="logo-icon">📡</div>
+    <div>
+      <div class="logo-title">Study Tracker</div>
+      <div class="logo-sub">Radiology Spaced Repetition · Live from Google Sheet</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="last-updated">Last sync: <span id="sync-time">—</span></div>
+    <button class="sync-btn" onclick="syncNow(this)" id="sync-btn">
+      <span class="spin">🔄</span> Sync Sheet
+    </button>
+  </div>
+</header>
+
+<!-- ── Tab Bar ── -->
+<div class="tab-bar">
+  <button id="tabn-dashboard" class="tab-btn tab-active" onclick="switchTab('dashboard')">📊 Dashboard</button>
+  <button id="tabn-checklist" class="tab-btn" onclick="switchTab('checklist')">✅ Daily &amp; Pipeline</button>
+</div>
+
+<div id="tab-dashboard">
+
+<!-- ── KPI Row ── -->
+<div class="kpi-row">
+
+  <div class="card-btn" onclick="openPanel('overdue')" style="border-top:2px solid var(--red)">
+    <div class="ct">Overdue <span class="ct-icon">⚠️</span></div>
+    <div class="kpi-val c-red" id="k-overdue">66</div>
+    <div class="kpi-label">items past due</div>
+    <div class="kpi-badge bg-red">🔴 Needs attention</div>
+    <div class="kpi-sub" style="margin-top:6px">tap to see items</div>
+  </div>
+
+  <div class="card-btn" onclick="openPanel('today')" style="border-top:2px solid var(--orange)">
+    <div class="ct">Due Today <span class="ct-icon">📬</span></div>
+    <div class="kpi-val c-orange" id="k-today">3</div>
+    <div class="kpi-label">items due today</div>
+    <div class="kpi-badge bg-orange">🟠 Do these now</div>
+    <div class="kpi-sub" style="margin-top:6px">tap to see items</div>
+  </div>
+
+  <div class="card-btn" onclick="openPanel('book-rate')" style="border-top:2px solid var(--accent)">
+    <div class="ct">Book Completion <span class="ct-icon">📖</span></div>
+    <div class="kpi-val c-accent" id="k-book-rate">—</div>
+    <div class="kpi-label">across all books</div>
+    <div style="margin-top:10px">
+      <div style="background:var(--border);border-radius:99px;height:4px;overflow:hidden">
+        <div id="book-rate-bar" style="height:100%;border-radius:99px;background:var(--accent);width:0%;transition:width .6s ease"></div>
+      </div>
+    </div>
+    <div class="kpi-sub" id="k-book-sub" style="margin-top:5px">sync to load</div>
+  </div>
+
+  <div class="card-btn" onclick="openPanel('paper-rate')" style="border-top:2px solid var(--purple)">
+    <div class="ct">Collection Rate <span class="ct-icon">📄</span></div>
+    <div class="kpi-val c-purple" id="k-paper-rate">—</div>
+    <div class="kpi-label">across all collections</div>
+    <div style="margin-top:10px">
+      <div style="background:var(--border);border-radius:99px;height:4px;overflow:hidden">
+        <div id="paper-rate-bar" style="height:100%;border-radius:99px;background:var(--purple);width:0%;transition:width .6s ease"></div>
+      </div>
+    </div>
+    <div class="kpi-sub" id="k-paper-sub" style="margin-top:5px">sync to load</div>
+  </div>
+
+  <div class="card" style="border-top:2px solid var(--amber)">
+    <div class="ct">Cases Encountered <span class="ct-icon">🩻</span></div>
+    <div class="kpi-val c-amber" id="k-cases">43</div>
+    <div class="kpi-label">radiology cases logged</div>
+    <div class="kpi-badge bg-amber" style="margin-top:8px">CT · MR · USG · CXR</div>
+  </div>
+
+  <div class="card-btn" onclick="openPanel('dontknow')" style="border-top:2px solid var(--orange)">
+    <div class="ct">Don't Know Topics <span class="ct-icon">❓</span></div>
+    <div class="kpi-val c-orange" id="k-dontknow">7</div>
+    <div class="kpi-label">topics flagged for review</div>
+    <div class="kpi-badge bg-orange" style="margin-top:8px">🟠 Focus here</div>
+    <div class="kpi-sub" style="margin-top:6px">tap to see topics</div>
+  </div>
+
+</div>
+
+<!-- ── Main Row: Chart | Donut | Active Work ── -->
+<div class="g-three">
+
+  <div class="card" style="border-top:2px solid var(--accent)">
+    <div class="ct">7-Day Review Schedule <span class="ct-icon">📆</span></div>
+    <canvas id="foreChart" height="210"></canvas>
+  </div>
+
+  <div class="card-btn" onclick="openPanel('freshness')" style="border-top:2px solid var(--green)">
+    <div class="ct">
+      Modality Freshness
+      <span style="display:flex;align-items:center;gap:4px">
+        <span class="ct-hint-fresh">tap</span>
+        <span class="ct-icon">🧠</span>
+      </span>
+    </div>
+    <div class="donut-wrap">
+      <canvas id="freshChart"></canvas>
+      <div class="donut-center">
+        <div class="donut-num c-green" id="fresh-total">23</div>
+        <div class="donut-sub">items</div>
+      </div>
+    </div>
+    <div class="donut-legend">
+      <div class="donut-row"><div class="donut-dot" style="background:var(--green)"></div>Fresh<span class="donut-n" id="f-fresh">20</span></div>
+      <div class="donut-row"><div class="donut-dot" style="background:var(--amber)"></div>Fading<span class="donut-n" id="f-fading">2</span></div>
+      <div class="donut-row"><div class="donut-dot" style="background:var(--red)"></div>Stale<span class="donut-n" id="f-stale">1</span></div>
+    </div>
+  </div>
+
+  <div class="card" style="border-top:2px solid var(--amber)">
+    <div class="ct">Active Work <span class="ct-icon">🎯</span></div>
+    <div id="work-list"></div>
+  </div>
+
+</div>
+
+<!-- ── Source Progress Strip ── -->
+<div class="source-strip" id="src-strip">
+  <div class="src-item"><div class="src-head"><span class="src-name" style="color:var(--dim)">syncing…</span></div><div class="src-bar-bg"></div></div>
+  <div class="src-item"><div class="src-head"><span class="src-name" style="color:var(--dim)">syncing…</span></div><div class="src-bar-bg"></div></div>
+  <div class="src-item"><div class="src-head"><span class="src-name" style="color:var(--dim)">syncing…</span></div><div class="src-bar-bg"></div></div>
+  <div class="src-item"><div class="src-head"><span class="src-name" style="color:var(--dim)">syncing…</span></div><div class="src-bar-bg"></div></div>
+</div>
+
+<!-- ── Books | Papers ── -->
+<div class="g2">
+
+  <div class="card" style="border-top:2px solid var(--accent)">
+    <div class="ct">
+      Books 📖
+      <span id="book-count" style="font-size:.6rem;color:var(--dim);font-weight:500;text-transform:none;letter-spacing:0">—</span>
+    </div>
+    <div class="scroll-list" id="book-bars">
+      <div style="font-size:.7rem;color:var(--dim);padding:14px 0">Click <strong style="color:var(--muted)">Sync Sheet</strong> to load</div>
+    </div>
+  </div>
+
+  <div class="card" style="border-top:2px solid var(--purple)">
+    <div class="ct">
+      Papers 📄
+      <span id="paper-count" style="font-size:.6rem;color:var(--dim);font-weight:500;text-transform:none;letter-spacing:0">—</span>
+    </div>
+    <div class="scroll-list" id="paper-bars">
+      <div style="font-size:.7rem;color:var(--dim);padding:14px 0">Click <strong style="color:var(--muted)">Sync Sheet</strong> to load</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Next Steps ── -->
+<div class="card" style="border-top:2px solid var(--orange)">
+  <div class="ct">Recommended Next Steps <span class="ct-icon">🚀</span>
+    <button onclick="resetActions()" style="font-size:.58rem;padding:2px 8px;border-radius:99px;border:1px solid var(--border);background:transparent;color:var(--dim);cursor:pointer;text-transform:none;letter-spacing:0;font-weight:500">Reset</button>
+  </div>
+  <div class="action-grid" id="action-list"></div>
+</div>
+
+</div><!-- /tab-dashboard -->
+
+<!-- ── Checklist Tab ── -->
+<div id="tab-checklist" style="display:none">
+  <div id="cl-content"></div>
+</div>
+
+<!-- ── Drawer ── -->
+<div id="drawer-overlay" onclick="closePanel()"></div>
+<div id="drawer">
+  <div id="drawer-head">
+    <div id="drawer-title">Panel</div>
+    <button id="drawer-close" onclick="closePanel()">✕</button>
+  </div>
+  <div id="drawer-desc"></div>
+  <div id="drawer-body"></div>
+  <div id="drawer-foot">
+    <button class="d-foot-btn" onclick="markAllDone()">Mark All Done</button>
+    <button class="d-foot-btn" onclick="closePanel()">Close</button>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════
+// DATA
+// ════════════════════════════════════════════════════════
+const SHEET_ID = '1u58YRfh_mT8k7TmGiG_UKzxcS5PDL8JchCm0rjvV8_Y';
+
+const D = {
+  kpi: { overdue:66, today:3, bookRate:0, paperRate:0, bookDone:0, bookTotal:0, paperDone:0, paperTotal:0, cases:43, dontKnow:7 },
+
+  freshness: { fresh:20, fading:2, stale:1 },
+
+  forecast: [
+    {d:'23/5', label:'Today',   n:5},
+    {d:'24/5', label:'24 May',  n:6},
+    {d:'25/5', label:'25 May',  n:9},
+    {d:'26/5', label:'26 May',  n:4},
+    {d:'27/5', label:'27 May',  n:3},
+    {d:'28/5', label:'28 May',  n:3},
+    {d:'29/5', label:'29 May',  n:3},
+  ],
+
+  sources: [
+    {name:'All Book',    done:6,  total:29, rate:21, color:'#38bdf8'},
+    {name:'All Paper',   done:1,  total:31, rate:3,  color:'#a78bfa'},
+    {name:'All Lecture', done:3,  total:18, rate:17, color:'#4ade80'},
+    {name:'All Daily',   done:0,  total:3,  rate:0,  color:'#fbbf24'},
+  ],
+
+  // Books — auto-populated by syncBooks() on every sync
+  books: [],
+
+  // Paper collections — auto-populated by syncPapers() on every sync
+  papers: [],
+
+  // Log items — auto-populated by syncLog() on every sync
+  overdueItems: [],  // [{name, category, daysOverdue}]
+  todayItems:   [],  // [{name, category}]
+
+  // Clinical Scenario — auto-populated by syncScenarios()
+  scenarioItems: { fresh:[], fading:[], stale:[] },
+  // Case Accession — auto-populated by syncCases()
+  caseItems:    [],
+  // Discussion — auto-populated by syncDontKnow()
+  dontKnowItems: [],
+
+  work: [
+    {name:'Await for EC',     icon:'🔬', type:'Research',     status:'overdue', label:'Overdue 🔴', due:'23/5/2026', css:'bg-red'},
+    {name:'Topic MSK Slides', icon:'📊', type:'Presentation', status:'soon',    label:'5 days 🔵',  due:'28/5/2026', css:'bg-blue'},
+    {name:'Journal MSK',      icon:'📰', type:'Journal',      status:'done',    label:'Done ✅',    due:'28/5/2026', css:'bg-green'},
+  ],
+};
+
+// ════════════════════════════════════════════════════════
+// PANELS
+// ════════════════════════════════════════════════════════
+const PANELS = {
+
+  overdue: {
+    title:'Overdue Items 🔴',
+    desc:'66 items past their scheduled review date — across Books, Papers and Lectures. Forgetting compounds daily.',
+    sections:[
+      { label:'📖 Books — overdue', color:'var(--red)', items:[
+        {text:'Ch.5 — Musculoskeletal Imaging',   sub:'Primer · Was due 1 May · 22 days overdue'},
+        {text:'Ch.6 — Neurologic Imaging',        sub:'Primer · Was due 1 May · 22 days overdue'},
+        {text:'Ch.3 — Gastrointestinal Imaging',  sub:'Primer · Was due 20 May · 3 days overdue'},
+        {text:'Ch.4 — Genitourinary Imaging',     sub:'Primer · Was due 21 May · 2 days overdue'},
+        {text:'Ch.1 — Chest Imaging',             sub:'Primer · Was due 21 May · 2 days overdue'},
+        {text:'Ch.7 — Head and Neck Imaging',     sub:'Primer · Was due 21 May · 2 days overdue'},
+      ]},
+      { label:'📄 Papers — overdue (30+)', color:'var(--red)', items:[
+        {text:'Traumatic Brain Injury: Imaging Patterns',  sub:'Was due 12 May · 11 days overdue'},
+        {text:'Traumatic Neck and Skull Base Injuries',    sub:'Was due 13 May · 10 days overdue'},
+        {text:'Temporal Bone Trauma: CT Appearances',      sub:'Was due 14 May · 9 days overdue'},
+        {text:'Blunt Cerebrovascular Injury',              sub:'Was due 17 May · 6 days overdue'},
+        {text:'Pediatric Cervical Spine Trauma',           sub:'Was due 18 May · 5 days overdue'},
+        {text:'Injuries to the Rigid Spine',               sub:'Was due 19 May · 4 days overdue'},
+        {text:'Thoracolumbar Spine Injury at CT',          sub:'Was due 20 May · 3 days overdue'},
+        {text:'Art of Interpreting Cervical Radiographs',  sub:'Was due 21 May · 2 days overdue'},
+        {text:'Multidetector CT of Cervical Spine Trauma', sub:'Was due 22 May · 1 day overdue'},
+        {text:'+ more papers overdue',                     sub:'Sync Sheet to see full list'},
+      ]},
+      { label:'🎓 Lectures — overdue (15+)', color:'var(--red)', items:[
+        {text:'Bladder',         sub:'Was due 18 May · 5 days overdue'},
+        {text:'Bladder Stone',   sub:'Was due 19 May · 4 days overdue'},
+        {text:'Ureteric Stone',  sub:'Was due 20 May · 3 days overdue'},
+        {text:'Dragon',          sub:'Was due 21 May · 2 days overdue'},
+        {text:'Macbook',         sub:'Was due 22 May · 1 day overdue'},
+        {text:'+ more lectures overdue', sub:'Sync Sheet to see full list'},
+      ]},
+    ],
+    note:'Colored cells in the sheet are excluded. Sync to refresh the exact count.',
+  },
+
+  today: {
+    title:'Due Today 🟠',
+    desc:'5 items scheduled for review today (23 May). Clear these before they become overdue.',
+    sections:[
+      { label:'📄 Papers', color:'var(--orange)', items:[
+        {text:'Imaging Manifestations of Chest Trauma', sub:'Trauma Must Know · due 23/5'},
+      ]},
+      { label:'📖 Books / 🎓 Lectures', color:'var(--orange)', items:[
+        {text:'Sync Sheet to load the remaining 4 items', sub:'Exact items depend on reviewed (colored) cells'},
+      ]},
+    ],
+    note:'Sync Sheet for the complete list.',
+  },
+
+  week: {
+    title:'Next 6 Days 🔵',
+    desc:'28 additional items due 24–29 May. Heaviest day: 25 May (9 items).',
+    sections:[
+      { label:'📅 Schedule', color:'var(--blue)', items:[
+        {text:'24 May — 6 items', sub:'Papers + book chapters'},
+        {text:'25 May — 9 items', sub:'Busiest day · plan ahead'},
+        {text:'26 May — 4 items', sub:''},
+        {text:'27 May — 3 items', sub:''},
+        {text:'28 May — 3 items', sub:'Topic MSK deadline'},
+        {text:'29 May — 3 items', sub:''},
+      ]},
+    ],
+    note:'Sync Sheet to see exact item names per day.',
+  },
+
+  done: {
+    title:'Completed Items ✅',
+    desc:'10 items completed so far. 6 books, 1 paper, 3 lectures.',
+    sections:[
+      { label:'📖 Books — 6 done', color:'var(--green)', items:[
+        {text:'Ch.2 — Cardiac Imaging (Primer)', sub:'Completed · on review schedule'},
+        {text:'+ 5 more chapters',               sub:'Sync Sheet to load full list'},
+      ]},
+      { label:'📄 Papers — 1 done', color:'var(--green)', items:[
+        {text:'CT of Skull Base Fractures: Classification', sub:'Trauma Must Know · Progress: Done'},
+      ]},
+      { label:'🎓 Lectures — 3 done', color:'var(--green)', items:[
+        {text:'Gallbladder Disease', sub:'ABD · status: done'},
+        {text:'+ 2 more lectures',   sub:'Sync Sheet to load full list'},
+      ]},
+    ],
+    note:'Tick items to mark done locally (stored in browser).',
+  },
+
+  freshness: {
+    title:'Modality Freshness 🧠',
+    desc:'Recall health across 23 tracked modality items — Fresh means well retained, Fading means review soon, Stale means immediate action.',
+    sections:[
+      { label:'⚠️ Stale — review now (1)', color:'var(--red)', items:[
+        {text:'1 item past recall threshold', sub:'Sync Sheet to see which modality is stale'},
+      ]},
+      { label:'📉 Fading — review soon (2)', color:'var(--amber)', items:[
+        {text:'2 items approaching forgetting curve', sub:'Sync Sheet to see which modalities are fading'},
+      ]},
+      { label:'✅ Fresh — well retained (20)', color:'var(--green)', items:[
+        {text:'20 items currently retained', sub:'No immediate action needed · keep the schedule'},
+      ]},
+    ],
+    note:'Sync Sheet to load exact modality names for each recall status.',
+  },
+
+};
+
+// ════════════════════════════════════════════════════════
+// NEXT STEPS
+// ════════════════════════════════════════════════════════
+const ACTIONS = [
+  {id:'a1', tier:'critical', icon:'🔥', title:'Tackle overdue backlog (66 items)',  detail:'Worst-to-best order: Ch.5 & Ch.6 MSK/Neuro (22d), then papers from 12 May onward.'},
+  {id:'a2', tier:'critical', icon:'🚨', title:'Submit Await for EC (overdue!)',     detail:'Research was due today — complete and submit immediately.'},
+  {id:'a3', tier:'high',     icon:'⚠️', title:'Clear today\'s 5 due items',         detail:'Do not let these slip into the overdue pile.'},
+  {id:'a4', tier:'high',     icon:'📅', title:'Prepare for 25 May (9 items)',       detail:'Heaviest single day this week — review some items early.'},
+  {id:'a5', tier:'medium',   icon:'📊', title:'Finish Topic MSK Slides',            detail:'Presentation due 28/5 (5 days) — currently in progress.'},
+];
+
+// ════════════════════════════════════════════════════════
+// LOCALSTORAGE
+// ════════════════════════════════════════════════════════
+const LS = 'study_dash_';
+const getChk = k     => localStorage.getItem(LS+k) === '1';
+const setChk = (k,v) => localStorage.setItem(LS+k, v ? '1' : '0');
+
+// ════════════════════════════════════════════════════════
+// RENDER
+// ════════════════════════════════════════════════════════
+function statusBadge(dueStr) {
+  if(!dueStr || dueStr === '—') return {css:'bg-grey', label:'No date'};
+  const [d,m,y] = dueStr.split('/').map(Number);
+  const due = new Date(y,m-1,d);
+  const today = new Date(); today.setHours(0,0,0,0);
+  const diff = Math.round((due - today) / 86400000);
+  if(diff < 0)   return {css:'bg-red',    label:`${Math.abs(diff)}d overdue 🔴`};
+  if(diff === 0) return {css:'bg-orange', label:'Due today 🟠'};
+  if(diff <= 3)  return {css:'bg-amber',  label:`${diff}d left 🟡`};
+  if(diff <= 7)  return {css:'bg-blue',   label:`${diff}d left 🔵`};
+  return                {css:'bg-grey',   label:`${diff}d left ⚪`};
+}
+
+function renderSourceStrip(rows) {
+  const el = document.getElementById('src-strip');
+  if(!el || !rows || rows.length === 0) return;
+  el.innerHTML = rows.map(r => {
+    const pct = r.total > 0 ? Math.round(r.done / r.total * 100) : 0;
+    return `<div class="src-item">
+      <div class="src-head">
+        <span class="src-name">${r.name}</span>
+        <span class="src-rate" style="color:${r.color}">${pct}%</span>
+      </div>
+      <div class="src-bar-bg"><div class="src-bar-fill" style="width:${pct}%;background:${r.color}"></div></div>
+      <div class="src-stat">${r.done} / ${r.total} items</div>
+    </div>`;
+  }).join('');
+}
+
+function renderBars(containerId, rows) {
+  const el = document.getElementById(containerId);
+  if(!rows || rows.length === 0) {
+    el.innerHTML = '<div style="font-size:.72rem;color:var(--dim);padding:12px 0">Click <strong style="color:var(--muted)">Sync Sheet</strong> to load data from Google Sheet</div>';
+    return;
+  }
+  el.innerHTML = rows.map(r => {
+    const pct = r.total > 0 ? Math.round(r.done / r.total * 100) : 0;
+    return `<div class="bar-row">
+      <div class="bar-name" title="${r.name}">${r.name}</div>
+      <div class="bar-bg"><div class="bar-fill" style="width:${pct}%;background:${r.color}"></div></div>
+      <div class="bar-stat">${r.done} / ${r.total}</div>
+      <div class="bar-rate" style="color:${r.color}">${pct}%</div>
+    </div>`;
+  }).join('');
+}
+
+function render() {
+  // KPI
+  document.getElementById('k-overdue').textContent  = D.kpi.overdue;
+  document.getElementById('k-today').textContent    = D.kpi.today;
+  document.getElementById('k-cases').textContent    = D.kpi.cases;
+  document.getElementById('k-dontknow').textContent = D.kpi.dontKnow;
+
+  // Freshness donut legend
+  const ft = D.freshness.fresh + D.freshness.fading + D.freshness.stale;
+  document.getElementById('fresh-total').textContent = ft;
+  document.getElementById('f-fresh').textContent  = D.freshness.fresh;
+  document.getElementById('f-fading').textContent = D.freshness.fading;
+  document.getElementById('f-stale').textContent  = D.freshness.stale;
+
+  // Source strip (compact)
+  renderSourceStrip(D.sources);
+
+  // Book bars
+  renderBars('book-bars', D.books);
+
+  // Paper bars
+  renderBars('paper-bars', D.papers);
+
+  // Active Work
+  document.getElementById('work-list').innerHTML = D.work.map(w => {
+    const b = (w.status === 'done' || w.status === 'overdue')
+      ? {css: w.css, label: w.label}
+      : statusBadge(w.due);
+    return `<div class="work-item">
+      <div class="work-top">
+        <span class="work-name">${w.icon} ${w.name}</span>
+        <span class="work-badge ${b.css}">${b.label}</span>
+      </div>
+      <div class="work-meta">
+        <span class="work-type">${w.type}</span>
+        <span>Due: ${w.due}</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Next Steps
+  document.getElementById('action-list').innerHTML = ACTIONS.map(a => {
+    const done = getChk('action_'+a.id);
+    return `<div class="action-item${done?' done':''} tier-${a.tier}" onclick="toggleAction('${a.id}',this)">
+      <div class="action-cb${done?' done':''}">✓</div>
+      <div class="action-icon">${a.icon}</div>
+      <div class="action-body">
+        <div class="action-title">${a.title}</div>
+        <div class="action-detail">${a.detail}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════════════════════
+// CHARTS
+// ════════════════════════════════════════════════════════
+const charts = {};
+function buildCharts() {
+  if(charts.fore) charts.fore.destroy();
+  charts.fore = new Chart(document.getElementById('foreChart'), {
+    type:'bar',
+    data:{
+      labels: D.forecast.map(f => f.d),
+      datasets:[{
+        data: D.forecast.map(f => f.n),
+        backgroundColor: D.forecast.map((f,i) =>
+          i===0 ? '#fb923c' : f.n >= 8 ? '#f87171' : '#38bdf8'
+        ),
+        borderRadius:5, borderSkipped:false,
+      }],
+    },
+    options:{
+      responsive:true, maintainAspectRatio:true,
+      plugins:{
+        legend:{display:false},
+        tooltip:{
+          callbacks:{
+            label: c => ` ${c.parsed.y} items`,
+            title: c => D.forecast[c[0].dataIndex].label,
+          },
+          backgroundColor:'#0d1928', borderColor:'#1c2b42', borderWidth:1,
+          titleColor:'#dde6f0', bodyColor:'#6b8099',
+        },
+      },
+      scales:{
+        x:{ grid:{color:'#1c2b42'}, ticks:{color:'#6b8099', font:{size:11}} },
+        y:{ grid:{color:'#1c2b42'}, ticks:{color:'#6b8099', stepSize:1}, beginAtZero:true },
+      },
+    },
+  });
+
+  if(charts.fresh) charts.fresh.destroy();
+  charts.fresh = new Chart(document.getElementById('freshChart'), {
+    type:'doughnut',
+    data:{
+      labels:['Fresh','Fading','Stale'],
+      datasets:[{
+        data:[D.freshness.fresh, D.freshness.fading, D.freshness.stale],
+        backgroundColor:['#4ade80bb','#fbbf24bb','#f87171bb'],
+        borderWidth:0, hoverOffset:6,
+      }],
+    },
+    options:{
+      cutout:'72%',
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label: c => ` ${c.label}: ${c.parsed}`}},
+      },
+      animation:{duration:700},
+    },
+  });
+}
+
+// ════════════════════════════════════════════════════════
+// INTERACTIVITY
+// ════════════════════════════════════════════════════════
+function toggleAction(id, el) {
+  const done = !getChk('action_'+id);
+  setChk('action_'+id, done);
+  el.classList.toggle('done', done);
+  el.querySelector('.action-cb').classList.toggle('done', done);
+}
+
+function resetActions() {
+  ACTIONS.forEach(a => setChk('action_'+a.id, false));
+  render();
+}
+
+// ── Drawer ──
+function openPanel(key) {
+
+  // ── Live: Overdue items from Log tab ──
+  if(key === 'overdue') {
+    document.getElementById('drawer-title').textContent = `Overdue Items 🔴`;
+    document.getElementById('drawer-desc').textContent  =
+      D.overdueItems.length > 0
+        ? `${D.kpi.overdue} unique items past their scheduled review date — sorted most overdue first.`
+        : 'No overdue items found. Sync Sheet to load the latest data.';
+    let html = '';
+    if(D.overdueItems.length === 0) {
+      html = '<div style="font-size:.75rem;color:var(--dim);padding:16px 0">Click <strong style="color:var(--muted)">Sync Sheet</strong> to load overdue items from your Log tab.</div>';
+    } else {
+      // Group by category
+      const groups = {};
+      D.overdueItems.forEach(it => { (groups[it.category] = groups[it.category] || []).push(it); });
+      Object.entries(groups).forEach(([cat, items]) => {
+        html += `<div class="d-sect-hdr" style="color:var(--red)">${cat} — ${items.length} item${items.length!==1?'s':''}</div>`;
+        items.forEach((it, i) => {
+          const k = `ov_${encodeURIComponent(it.name).slice(0,20)}_${i}`;
+          const chk = getChk(k);
+          html += `<div class="d-item" onclick="toggleDrawerItem('${k}',this)">
+            <div class="d-cb${chk?' done':''}">✓</div>
+            <div class="d-text">
+              <div class="d-main">${it.name}</div>
+              <div class="d-sub">${it.daysOverdue} day${it.daysOverdue!==1?'s':''} overdue</div>
+            </div>
+          </div>`;
+        });
+      });
+    }
+    document.getElementById('drawer-body').innerHTML = html;
+    document.getElementById('drawer').classList.add('open');
+    document.getElementById('drawer-overlay').classList.add('open');
+    return;
+  }
+
+  // ── Live: Due Today items from Log tab ──
+  if(key === 'today') {
+    document.getElementById('drawer-title').textContent = `Due Today 🟠`;
+    document.getElementById('drawer-desc').textContent  =
+      D.todayItems.length > 0
+        ? `${D.kpi.today} item${D.kpi.today!==1?'s':''} scheduled for review today. Clear these before they become overdue.`
+        : 'Nothing due today — great job staying on top of it!';
+    let html = '';
+    if(D.todayItems.length === 0) {
+      html = '<div style="font-size:.75rem;color:var(--green);padding:16px 0">✅ Nothing due today. Sync Sheet to refresh.</div>';
+    } else {
+      const groups = {};
+      D.todayItems.forEach(it => { (groups[it.category] = groups[it.category] || []).push(it); });
+      Object.entries(groups).forEach(([cat, items]) => {
+        html += `<div class="d-sect-hdr" style="color:var(--orange)">${cat} — ${items.length} item${items.length!==1?'s':''}</div>`;
+        items.forEach((it, i) => {
+          const k = `td_${encodeURIComponent(it.name).slice(0,20)}_${i}`;
+          const chk = getChk(k);
+          html += `<div class="d-item" onclick="toggleDrawerItem('${k}',this)">
+            <div class="d-cb${chk?' done':''}">✓</div>
+            <div class="d-text">
+              <div class="d-main">${it.name}</div>
+              <div class="d-sub">${cat} · due today</div>
+            </div>
+          </div>`;
+        });
+      });
+    }
+    document.getElementById('drawer-body').innerHTML = html;
+    document.getElementById('drawer').classList.add('open');
+    document.getElementById('drawer-overlay').classList.add('open');
+    return;
+  }
+
+  // ── Live: Modality Freshness from Clinical Scenario tab ──
+  if(key === 'freshness') {
+    const {fresh, fading, stale} = D.scenarioItems;
+    const total = fresh.length + fading.length + stale.length;
+    document.getElementById('drawer-title').textContent = 'Modality Freshness 🧠';
+    document.getElementById('drawer-desc').textContent  = total > 0
+      ? `${total} tracked scenarios — ${stale.length} stale, ${fading.length} fading, ${fresh.length} fresh.`
+      : 'Sync Sheet to load scenario data.';
+    let html = '';
+    if(total === 0) {
+      html = '<div style="font-size:.75rem;color:var(--dim);padding:16px 0">Click <strong style="color:var(--muted)">Sync Sheet</strong> to load freshness data from the Clinical Scenario tab.</div>';
+    } else {
+      [
+        { label:'⚠️ Stale — review now',   items:stale,  color:'var(--red)'   },
+        { label:'📉 Fading — review soon',  items:fading, color:'var(--amber)' },
+        { label:'✅ Fresh — well retained', items:fresh,  color:'var(--green)' },
+      ].forEach(s => {
+        if(s.items.length === 0) return;
+        html += `<div class="d-sect-hdr" style="color:${s.color}">${s.label} (${s.items.length})</div>`;
+        s.items.forEach((it, i) => {
+          const k = `fr_${encodeURIComponent(it.name).slice(0,20)}_${i}`;
+          const chk = getChk(k);
+          html += `<div class="d-item" onclick="toggleDrawerItem('${k}',this)">
+            <div class="d-cb${chk?' done':''}">✓</div>
+            <div class="d-text">
+              <div class="d-main">${it.name}</div>
+              ${it.modal ? `<div class="d-sub">${it.modal}</div>` : ''}
+            </div>
+          </div>`;
+        });
+      });
+    }
+    document.getElementById('drawer-body').innerHTML = html;
+    document.getElementById('drawer').classList.add('open');
+    document.getElementById('drawer-overlay').classList.add('open');
+    return;
+  }
+
+  // ── Live: Cases from Case Accession tab ──
+  if(key === 'cases') {
+    document.getElementById('drawer-title').textContent = 'Cases Encountered 🩻';
+    document.getElementById('drawer-desc').textContent  = D.caseItems.length > 0
+      ? `${D.caseItems.length} radiology cases logged — grouped by modality.`
+      : 'Sync Sheet to load cases from the Case Accession tab.';
+    let html = '';
+    if(D.caseItems.length === 0) {
+      html = '<div style="font-size:.75rem;color:var(--dim);padding:16px 0">Click <strong style="color:var(--muted)">Sync Sheet</strong> to load case data.</div>';
+    } else {
+      const groups = {};
+      D.caseItems.forEach(it => { const g = it.modal || 'Other'; (groups[g] = groups[g]||[]).push(it); });
+      Object.entries(groups).forEach(([mod, items]) => {
+        html += `<div class="d-sect-hdr" style="color:var(--amber)">${mod} — ${items.length} case${items.length!==1?'s':''}</div>`;
+        items.forEach((it, i) => {
+          const k = `ca_${encodeURIComponent(it.name).slice(0,20)}_${i}`;
+          const chk = getChk(k);
+          html += `<div class="d-item" onclick="toggleDrawerItem('${k}',this)">
+            <div class="d-cb${chk?' done':''}">✓</div>
+            <div class="d-text">
+              <div class="d-main">${it.name}</div>
+              ${it.det ? `<div class="d-sub">${it.det}</div>` : ''}
+            </div>
+          </div>`;
+        });
+      });
+    }
+    document.getElementById('drawer-body').innerHTML = html;
+    document.getElementById('drawer').classList.add('open');
+    document.getElementById('drawer-overlay').classList.add('open');
+    return;
+  }
+
+  // ── Live: Don't Know Topics from Discussion tab ──
+  if(key === 'dontknow') {
+    document.getElementById('drawer-title').textContent = "Don't Know Topics ❓";
+    document.getElementById('drawer-desc').textContent  = D.dontKnowItems.length > 0
+      ? `${D.dontKnowItems.length} topic${D.dontKnowItems.length!==1?'s':''} flagged for deeper study.`
+      : 'Sync Sheet to load topics from the Discussion tab.';
+    let html = '';
+    if(D.dontKnowItems.length === 0) {
+      html = '<div style="font-size:.75rem;color:var(--dim);padding:16px 0">Click <strong style="color:var(--muted)">Sync Sheet</strong> to load topic data.</div>';
+    } else {
+      html += `<div class="d-sect-hdr" style="color:var(--orange)">Topics to master (${D.dontKnowItems.length})</div>`;
+      D.dontKnowItems.forEach((it, i) => {
+        const k = `dk_${encodeURIComponent(it.name).slice(0,20)}_${i}`;
+        const chk = getChk(k);
+        html += `<div class="d-item" onclick="toggleDrawerItem('${k}',this)">
+          <div class="d-cb${chk?' done':''}">✓</div>
+          <div class="d-text">
+            <div class="d-main">${it.name}</div>
+            ${it.det ? `<div class="d-sub">${it.det}</div>` : ''}
+          </div>
+        </div>`;
+      });
+    }
+    document.getElementById('drawer-body').innerHTML = html;
+    document.getElementById('drawer').classList.add('open');
+    document.getElementById('drawer-overlay').classList.add('open');
+    return;
+  }
+
+  // Dynamic panels — generated from live D.books / D.papers
+  if(key === 'book-rate') {
+    document.getElementById('drawer-title').textContent = 'Book Completion 📖';
+    document.getElementById('drawer-desc').textContent  =
+      `Progress across ${D.books.length} books — ${D.kpi.bookDone} of ${D.kpi.bookTotal} chapters done (${D.kpi.bookRate}%). Sync Sheet to refresh.`;
+    let html = '';
+    if(D.books.length === 0) {
+      html = '<div style="font-size:.75rem;color:var(--dim);padding:16px 0">Click <strong style="color:var(--muted)">Sync Sheet</strong> to load book data.</div>';
+    } else {
+      D.books.forEach(b => {
+        const pct = b.total > 0 ? Math.round(b.done/b.total*100) : 0;
+        html += `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+            <span style="font-size:.78rem;font-weight:600">${b.name}</span>
+            <span style="font-size:.72rem;color:var(--accent);font-weight:700">${pct}%</span>
+          </div>
+          <div style="background:var(--border);border-radius:99px;height:6px;overflow:hidden">
+            <div style="height:100%;border-radius:99px;background:var(--accent);width:${pct}%;transition:width .6s ease"></div>
+          </div>
+          <div style="font-size:.63rem;color:var(--muted);margin-top:4px">${b.done} / ${b.total} chapters</div>
+        </div>`;
+      });
+    }
+    document.getElementById('drawer-body').innerHTML = html;
+    document.getElementById('drawer').classList.add('open');
+    document.getElementById('drawer-overlay').classList.add('open');
+    return;
+  }
+
+  if(key === 'paper-rate') {
+    document.getElementById('drawer-title').textContent = 'Paper Collection Rate 📄';
+    document.getElementById('drawer-desc').textContent  =
+      `Progress across ${D.papers.length} collections — ${D.kpi.paperDone} of ${D.kpi.paperTotal} papers done (${D.kpi.paperRate}%). Sync Sheet to refresh.`;
+    let html = '';
+    if(D.papers.length === 0) {
+      html = '<div style="font-size:.75rem;color:var(--dim);padding:16px 0">Click <strong style="color:var(--muted)">Sync Sheet</strong> to load paper data.</div>';
+    } else {
+      D.papers.forEach(p => {
+        const pct = p.total > 0 ? Math.round(p.done/p.total*100) : 0;
+        html += `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+            <span style="font-size:.78rem;font-weight:600">${p.name}</span>
+            <span style="font-size:.72rem;color:var(--purple);font-weight:700">${pct}%</span>
+          </div>
+          <div style="background:var(--border);border-radius:99px;height:6px;overflow:hidden">
+            <div style="height:100%;border-radius:99px;background:var(--purple);width:${pct}%;transition:width .6s ease"></div>
+          </div>
+          <div style="font-size:.63rem;color:var(--muted);margin-top:4px">${p.done} / ${p.total} papers</div>
+        </div>`;
+      });
+    }
+    document.getElementById('drawer-body').innerHTML = html;
+    document.getElementById('drawer').classList.add('open');
+    document.getElementById('drawer-overlay').classList.add('open');
+    return;
+  }
+
+  const p = PANELS[key];
+  if(!p) return;
+  document.getElementById('drawer-title').textContent = p.title;
+  document.getElementById('drawer-desc').textContent  = p.desc;
+
+  let html = '';
+  (p.sections || []).forEach(s => {
+    html += `<div class="d-sect-hdr" style="color:${s.color}">${s.label}</div>`;
+    s.items.forEach((item, i) => {
+      const k = `panel_${key}_${i}_${s.label.slice(0,8)}`;
+      const chk = getChk(k);
+      html += `<div class="d-item" onclick="toggleDrawerItem('${k}',this)">
+        <div class="d-cb${chk?' done':''}">✓</div>
+        <div class="d-text">
+          <div class="d-main">${item.text}</div>
+          ${item.sub ? `<div class="d-sub">${item.sub}</div>` : ''}
+        </div>
+      </div>`;
+    });
+  });
+  if(p.note) html += `<div style="margin-top:14px;font-size:.65rem;color:var(--dim);border-top:1px solid var(--border);padding-top:10px">${p.note}</div>`;
+
+  document.getElementById('drawer-body').innerHTML = html;
+  document.getElementById('drawer').classList.add('open');
+  document.getElementById('drawer-overlay').classList.add('open');
+}
+
+function closePanel() {
+  document.getElementById('drawer').classList.remove('open');
+  document.getElementById('drawer-overlay').classList.remove('open');
+}
+
+function toggleDrawerItem(k, el) {
+  const cb = el.querySelector('.d-cb');
+  const nowDone = !cb.classList.contains('done');
+  setChk(k, nowDone);
+  cb.classList.toggle('done', nowDone);
+}
+
+function markAllDone() {
+  document.querySelectorAll('#drawer-body .d-cb').forEach(cb => cb.classList.add('done'));
+}
+
+document.addEventListener('keydown', e => { if(e.key === 'Escape') closePanel(); });
+
+// ════════════════════════════════════════════════════════
+// DYNAMIC TAB FETCHERS
+// These auto-detect all unique books/collections so new
+// entries in the sheet appear without any code changes.
+// ════════════════════════════════════════════════════════
+
+function gvizFetch(sheet, fn) {
+  const name = 'gviz_' + sheet.replace(/\W/g,'_') + '_' + Date.now();
+  window[name] = function(resp) { fn(resp); delete window[name]; };
+  const s = document.createElement('script');
+  s.src = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json;responseHandler:${name}&sheet=${encodeURIComponent(sheet)}`;
+  s.onerror = () => delete window[name];
+  document.head.appendChild(s);
+}
+
+// Column indices in All Book: 1=status, 2=Book name, 7=Progress
+function syncBooks() {
+  gvizFetch('All Book', function(resp) {
+    const map = {};
+    for(const row of (resp.table?.rows || [])) {
+      if(!row?.c) continue;
+      const status = String(row.c[1]?.v || '');
+      const book   = row.c[2]?.v;
+      // skip header row and blank book names
+      if(!book || typeof book !== 'string' || status === 'status' || book === 'Book') continue;
+      const prog = String(row.c[7]?.v || '');
+      if(!map[book]) map[book] = {done:0, total:0};
+      map[book].total++;
+      if(prog.toLowerCase().includes('done')) map[book].done++;
+    }
+    D.books = Object.entries(map).map(([name, d]) => ({name, done:d.done, total:d.total, color:'#38bdf8'}));
+    renderBars('book-bars', D.books);
+    const bc = document.getElementById('book-count');
+    if(bc) bc.textContent = `${D.books.length} books`;
+    updateRateKPIs();
+  });
+}
+
+// Column indices in All Paper: 1=status, 2=Collections, 7=Progress
+function syncPapers() {
+  gvizFetch('All Paper', function(resp) {
+    const map = {};
+    for(const row of (resp.table?.rows || [])) {
+      if(!row?.c) continue;
+      const status = String(row.c[1]?.v || '');
+      const col    = row.c[2]?.v;
+      // skip header row and blank collection names
+      if(!col || typeof col !== 'string' || status === 'status' || col === 'Collections') continue;
+      const prog = String(row.c[7]?.v || '');
+      if(!map[col]) map[col] = {done:0, total:0};
+      map[col].total++;
+      if(prog.toLowerCase().includes('done')) map[col].done++;
+    }
+    D.papers = Object.entries(map).map(([name, d]) => ({name, done:d.done, total:d.total, color:'#a78bfa'}));
+    renderBars('paper-bars', D.papers);
+    const pc = document.getElementById('paper-count');
+    if(pc) pc.textContent = `${D.papers.length} collections`;
+    updateRateKPIs();
+  });
+}
+
+// ════════════════════════════════════════════════════════
+// RATE KPIs — called after books/papers are loaded
+// ════════════════════════════════════════════════════════
+function updateRateKPIs() {
+  // Book rate
+  const bDone  = D.books.reduce((s,b) => s+b.done,  0);
+  const bTotal = D.books.reduce((s,b) => s+b.total, 0);
+  D.kpi.bookDone  = bDone;
+  D.kpi.bookTotal = bTotal;
+  D.kpi.bookRate  = bTotal > 0 ? Math.round(bDone / bTotal * 100) : 0;
+
+  // Paper rate
+  const pDone  = D.papers.reduce((s,p) => s+p.done,  0);
+  const pTotal = D.papers.reduce((s,p) => s+p.total, 0);
+  D.kpi.paperDone  = pDone;
+  D.kpi.paperTotal = pTotal;
+  D.kpi.paperRate  = pTotal > 0 ? Math.round(pDone / pTotal * 100) : 0;
+
+  // Update DOM
+  const kb = document.getElementById('k-book-rate');
+  const kp = document.getElementById('k-paper-rate');
+  if(kb) kb.textContent = bTotal > 0 ? D.kpi.bookRate + '%' : '—';
+  if(kp) kp.textContent = pTotal > 0 ? D.kpi.paperRate + '%' : '—';
+
+  const kbSub = document.getElementById('k-book-sub');
+  const kpSub = document.getElementById('k-paper-sub');
+  if(kbSub) kbSub.textContent = bTotal > 0 ? `${bDone} / ${bTotal} chapters` : 'sync to load';
+  if(kpSub) kpSub.textContent = pTotal > 0 ? `${pDone} / ${pTotal} papers`   : 'sync to load';
+
+  const kbBar = document.getElementById('book-rate-bar');
+  const kpBar = document.getElementById('paper-rate-bar');
+  if(kbBar) kbBar.style.width = D.kpi.bookRate  + '%';
+  if(kpBar) kpBar.style.width = D.kpi.paperRate + '%';
+}
+
+// ════════════════════════════════════════════════════════
+// LOG SYNC — count unique overdue & today items from Log tab
+// Col[0]=name  Col[1]=date  Col[2]=category  Col[3]=done(true/false)
+// ════════════════════════════════════════════════════════
+function syncLog() {
+  gvizFetch('Log', function(resp) {
+    try {
+      const today = new Date(); today.setHours(0,0,0,0);
+      // Use Maps keyed by name so duplicates collapse to most-overdue entry
+      const overdueMap = new Map();
+      const todayMap   = new Map();
+
+      for(const row of (resp.table?.rows || [])) {
+        if(!row?.c) continue;
+        const name     = row.c[0]?.v;
+        const rawDate  = row.c[1]?.v;   // gviz: "Date(Y,M,D)"  — month is 0-indexed
+        const category = String(row.c[2]?.v || '—');
+        const isDone   = row.c[3]?.v;   // true / false / null
+
+        if(!name || typeof name !== 'string') continue;
+        if(isDone === true) continue;
+
+        const m = String(rawDate).match(/Date\((\d+),(\d+),(\d+)\)/);
+        if(!m) continue;
+        const itemDate = new Date(+m[1], +m[2], +m[3]);
+        itemDate.setHours(0,0,0,0);
+
+        if(itemDate < today) {
+          const days = Math.round((today - itemDate) / 86400000);
+          // If same name appears multiple times keep the most-overdue entry
+          if(!overdueMap.has(name) || days > overdueMap.get(name).daysOverdue) {
+            overdueMap.set(name, { name, category, daysOverdue: days });
+          }
+        } else if(+itemDate === +today) {
+          if(!todayMap.has(name)) todayMap.set(name, { name, category });
+        }
+      }
+
+      // Sort overdue: most overdue first
+      D.overdueItems = [...overdueMap.values()].sort((a,b) => b.daysOverdue - a.daysOverdue);
+      D.todayItems   = [...todayMap.values()];
+      D.kpi.overdue  = D.overdueItems.length;
+      D.kpi.today    = D.todayItems.length;
+
+      document.getElementById('k-overdue').textContent = D.kpi.overdue;
+      document.getElementById('k-today').textContent   = D.kpi.today;
+      console.log(`Log sync: overdue=${D.kpi.overdue}, today=${D.kpi.today}`);
+    } catch(e) { console.warn('Log sync error:', e); }
+  });
+}
+
+// ════════════════════════════════════════════════════════
+// COLUMN FINDER — locate a column index by header label keywords
+// ════════════════════════════════════════════════════════
+function colIdx(cols, ...kws) {
+  for(const kw of kws) {
+    const i = cols.findIndex(c => String(c.label||'').toLowerCase().includes(kw.toLowerCase()));
+    if(i >= 0) return i;
+  }
+  return -1;
+}
+
+// ════════════════════════════════════════════════════════
+// SYNC SCENARIOS — freshness data from Clinical Scenario tab
+// ════════════════════════════════════════════════════════
+function syncScenarios() {
+  gvizFetch('Modality', function(resp) {
+    try {
+      const cols = resp.table?.cols || [];
+      const rows = resp.table?.rows || [];
+      let iName   = colIdx(cols, 'name','topic','scenario','title','case');
+      let iModal  = colIdx(cols, 'modality','modal','type');
+      let iStatus = colIdx(cols, 'status','state','recall','memory');
+      // Fallback: scan first data row for status keywords
+      if(iStatus < 0 && rows.length > 0) {
+        const r = rows[0].c || [];
+        for(let ci = 0; ci < r.length; ci++) {
+          const v = String(r[ci]?.v||'').toLowerCase();
+          if(v==='status'||v.includes('fresh')||v.includes('fad')||v.includes('stal')){ iStatus=ci; break; }
+        }
+      }
+      if(iName < 0)   iName   = 0;
+      if(iStatus < 0) iStatus = 1;
+
+      const fresh=[], fading=[], stale=[];
+      for(const row of rows) {
+        if(!row?.c) continue;
+        const name   = row.c[iName]?.v;
+        const status = String(row.c[iStatus]?.v || '').toLowerCase();
+        const modal  = iModal >= 0 ? String(row.c[iModal]?.v || '') : '';
+        if(!name || typeof name !== 'string') continue;
+        if(status==='status' || name.toLowerCase()==='name' || name.toLowerCase()==='scenario') continue;
+        const item = { name, modal };
+        if(status.includes('stal'))       stale.push(item);
+        else if(status.includes('fad'))   fading.push(item);
+        else if(status.includes('fresh')) fresh.push(item);
+      }
+      D.scenarioItems = { fresh, fading, stale };
+      const ft = fresh.length + fading.length + stale.length;
+      if(ft > 0) {
+        D.freshness.fresh  = fresh.length;
+        D.freshness.fading = fading.length;
+        D.freshness.stale  = stale.length;
+        document.getElementById('fresh-total').textContent = ft;
+        document.getElementById('f-fresh').textContent    = fresh.length;
+        document.getElementById('f-fading').textContent   = fading.length;
+        document.getElementById('f-stale').textContent    = stale.length;
+        if(charts.fresh) {
+          charts.fresh.data.datasets[0].data = [fresh.length, fading.length, stale.length];
+          charts.fresh.update();
+        }
+      }
+      console.log(`Scenario sync: fresh=${fresh.length}, fading=${fading.length}, stale=${stale.length}`);
+    } catch(e) { console.warn('Scenario sync error:', e); }
+  });
+}
+
+// ════════════════════════════════════════════════════════
+// SYNC CASES — case list from Case Accession tab
+// ════════════════════════════════════════════════════════
+function syncCases() {
+  gvizFetch('Case Accession', function(resp) {
+    try {
+      const cols = resp.table?.cols || [];
+      let iName  = colIdx(cols, 'name','case','diagnosis','title','finding','condition');
+      let iModal = colIdx(cols, 'modality','modal','type','imaging','scan');
+      let iDet   = colIdx(cols, 'detail','note','finding','desc','comment');
+      if(iName < 0) iName = 0;
+
+      const items = [];
+      for(const row of (resp.table?.rows || [])) {
+        if(!row?.c) continue;
+        const name  = row.c[iName]?.v;
+        const modal = iModal >= 0 ? String(row.c[iModal]?.v || '') : '';
+        const det   = iDet   >= 0 ? String(row.c[iDet]?.v   || '') : '';
+        if(!name || typeof name !== 'string') continue;
+        const nl = name.toLowerCase();
+        if(nl==='name'||nl==='case'||nl==='case name'||nl==='diagnosis') continue;
+        items.push({ name, modal, det });
+      }
+      D.caseItems    = items;
+      D.kpi.cases    = items.length;
+      const el = document.getElementById('k-cases');
+      if(el) el.textContent = items.length;
+      console.log(`Case sync: ${items.length} cases`);
+    } catch(e) { console.warn('Cases sync error:', e); }
+  });
+}
+
+// ════════════════════════════════════════════════════════
+// SYNC DON'T KNOW — "Don't know topic" tab
+// Col B (index 1) = topic name · Col E (index 4) = status
+// Only rows where col E is exactly "pending" are included
+// ════════════════════════════════════════════════════════
+function syncDontKnow() {
+  gvizFetch('Don\'t know topic', function(resp) {
+    try {
+      const items = [];
+      for(const row of (resp.table?.rows || [])) {
+        if(!row?.c) continue;
+        const name   = row.c[1]?.v;                              // column B
+        const status = String(row.c[4]?.v || '').toLowerCase();  // column E
+        if(!name || typeof name !== 'string') continue;
+        if(status !== 'pending') continue;                        // only pending
+        items.push({ name });
+      }
+      D.dontKnowItems = items;
+      D.kpi.dontKnow  = items.length;
+      const el = document.getElementById('k-dontknow');
+      if(el) el.textContent = items.length;
+      console.log(`DontKnow sync: ${items.length} pending topics`);
+    } catch(e) { console.warn('DontKnow sync error:', e); }
+  });
+}
+
+// ════════════════════════════════════════════════════════
+// SYNC — reads Sheet1 via gviz JSONP
+// ════════════════════════════════════════════════════════
+function syncNow(btn) {
+  const b = btn || document.getElementById('sync-btn');
+  b.classList.add('syncing');
+
+  gvizFetch('Sheet1', function(resp) {
+    b.classList.remove('syncing');
+    try {
+      let hits = 0;
+      for(const row of (resp.table?.rows || [])) {
+        if(!row?.c) continue;
+        const v = row.c.map(c => c?.v);
+
+        // Source rows: All Book / All Paper / All Lecture / All Daily
+        if(typeof v[1]==='string' && v[1].startsWith('All') && typeof v[3]==='number') {
+          const src = D.sources.find(s => s.name === v[1]);
+          if(src) { src.done = v[3]; if(v[4]) src.total = v[4]; src.rate = Math.round(src.done/src.total*100); hits++; }
+        }
+        // Cases Encountered & Don't Know Topics — scan label+value pairs in each row
+        for(let ci = 0; ci < (row.c?.length || 0) - 1; ci++) {
+          const lbl = String(row.c[ci]?.v || '').toLowerCase();
+          const num = row.c[ci+1]?.v;
+          if(typeof num === 'number') {
+            if(lbl.includes('case'))                                         { D.kpi.cases    = num; hits++; }
+            if(lbl.includes("don't know") || lbl.includes('dont know'))     { D.kpi.dontKnow = num; hits++; }
+          }
+        }
+        // 7-day forecast rows (date string + count)
+        if(typeof v[1]==='string' && /\d+\/\d+\/\d{4}/.test(v[1]) && typeof v[2]==='number') {
+          const parts = v[1].split('/');
+          const key = `${parseInt(parts[0])}/${parseInt(parts[1])}`;
+          const fc = D.forecast.find(f => f.d === key);
+          if(fc) { fc.n = v[2]; hits++; }
+        }
+        // Freshness row
+        if(typeof v[2]==='number' && typeof v[3]==='number' && typeof v[4]==='number'
+           && v[2] >= 10 && v[3] <= 10 && v[4] <= 10 && v[2]+v[3]+v[4] < 100) {
+          D.freshness.fresh = v[2]; D.freshness.fading = v[3]; D.freshness.stale = v[4]; hits++;
+        }
+      }
+      document.getElementById('sync-time').textContent = new Date().toLocaleTimeString();
+      render();
+      buildCharts();
+      syncBooks();      // auto-detect books from All Book tab
+      syncPapers();     // auto-detect collections from All Paper tab
+      syncLog();        // overdue & today items from Log tab
+      syncScenarios();  // freshness names from Clinical Scenario tab
+      syncCases();      // case list from Case Accession tab
+      syncDontKnow();   // topics from Discussion tab
+      console.log(`Sheet1 sync done — ${hits} fields updated`);
+    } catch(e) { console.warn('Sync error:', e); }
+  });
+}
+
+// ════════════════════════════════════════════════════════
+// TAB SWITCHING
+// ════════════════════════════════════════════════════════
+function switchTab(name) {
+  ['dashboard','checklist'].forEach(t => {
+    document.getElementById('tab-'+t).style.display = (t === name) ? '' : 'none';
+    const btn = document.getElementById('tabn-'+t);
+    if(btn) btn.classList.toggle('tab-active', t === name);
+  });
+  if(name === 'checklist') renderChecklist();
+}
+
+// ════════════════════════════════════════════════════════
+// CHECKLIST — TARGETS (persistent across sessions)
+// ════════════════════════════════════════════════════════
+function getTarget(key, def) {
+  const v = localStorage.getItem(LS+'t_'+key);
+  return v !== null ? parseInt(v) : def;
+}
+function setTarget(key, val) { localStorage.setItem(LS+'t_'+key, String(val)); }
+function adjTarget(key, def, delta) {
+  setTarget(key, Math.max(1, getTarget(key, def) + delta));
+  renderChecklist();
+}
+
+// ════════════════════════════════════════════════════════
+// CHECKLIST — DAILY / WEEKLY PROGRESS
+// Keyed by calendar date (YYYY-MM-DD) or ISO week (YYYY-Www)
+// so counts auto-reset without any cleanup code
+// ════════════════════════════════════════════════════════
+function todayKey() {
+  const d = new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function weekKey() {
+  const d   = new Date();
+  const tmp = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  tmp.setUTCDate(tmp.getUTCDate() + 4 - (tmp.getUTCDay() || 7));
+  const y = tmp.getUTCFullYear();
+  const w = Math.ceil((((tmp - Date.UTC(y,0,1)) / 86400000) + 1) / 7);
+  return y+'-W'+String(w).padStart(2,'0');
+}
+function getDailyCount(key)      { return parseInt(localStorage.getItem(LS+'d_'+todayKey()+'_'+key) || '0'); }
+function setDailyCount(key, val) { localStorage.setItem(LS+'d_'+todayKey()+'_'+key, String(Math.max(0, val))); }
+function getWeeklyCount(key)     { return parseInt(localStorage.getItem(LS+'w_'+weekKey()+'_'+key) || '0'); }
+function setWeeklyCount(key,val) { localStorage.setItem(LS+'w_'+weekKey()+'_'+key, String(Math.max(0, val))); }
+
+function logProgress(key, type, delta) {
+  if(type === 'daily') setDailyCount(key, getDailyCount(key) + delta);
+  else                 setWeeklyCount(key, getWeeklyCount(key) + delta);
+  renderChecklist();
+}
+function toggleActive(el) {
+  const now = getDailyCount('active') > 0 ? 0 : 1;
+  setDailyCount('active', now);
+  el.classList.toggle('done', now > 0);
+  el.textContent = now > 0 ? '✓' : '';
+}
+
+// ════════════════════════════════════════════════════════
+// CHECKLIST — HTML BUILDERS
+// ════════════════════════════════════════════════════════
+function clPct(done, total) { return total > 0 ? Math.min(100, Math.round(done / total * 100)) : 0; }
+
+function clRowHTML(icon, label, sublabel, done, total, key, type, color) {
+  const p  = clPct(done, total);
+  const ok = done >= total && total > 0;
+  return `<div class="cl-item">
+    <div class="cl-icon">${icon}</div>
+    <div class="cl-body">
+      <div class="cl-label">${label}${ok?' <span style="color:var(--green);font-size:.6rem">✓</span>':''}</div>
+      <div class="cl-sub">${sublabel}</div>
+    </div>
+    <div class="cl-bar-wrap">
+      <div class="cl-bar-bg"><div class="cl-bar-fill" style="width:${p}%;background:${color}"></div></div>
+      <div class="cl-count" style="color:${color}">${done}&thinsp;/&thinsp;${total}</div>
+    </div>
+    <div class="cl-adj">
+      <button class="cl-adj-btn" onclick="logProgress('${key}','${type}',-1)" title="Undo 1">−</button>
+      <button class="cl-adj-btn" onclick="logProgress('${key}','${type}',1)"  title="+1 done" style="background:${ok?'rgba(74,222,128,.15)':''}">+</button>
+    </div>
+  </div>`;
+}
+
+// unit: 'day' | 'week' | 'ongoing'
+// 'ongoing' = accumulation metric (cases) — shows current total, Est. Clear = "Ongoing"
+function burnRowHTML(icon, label, remaining, rate, color, targetKey, targetDef, unit='day') {
+  const rStr = (remaining !== null && remaining !== undefined) ? remaining : '?';
+  let estimate;
+  if(unit === 'ongoing') {
+    estimate = '<span style="color:var(--muted);font-style:italic">— Ongoing</span>';
+  } else if(remaining === null || remaining === undefined) {
+    estimate = '<span style="color:var(--dim);font-style:italic">Sync to load</span>';
+  } else if(remaining <= 0) {
+    estimate = '<span style="color:var(--green)">✅ Done!</span>';
+  } else if(rate <= 0) {
+    estimate = '<span style="color:var(--dim)">∞</span>';
+  } else {
+    const weeks   = unit === 'week' ? Math.ceil(remaining / rate) : null;
+    const daysOut = unit === 'week' ? weeks * 7 : Math.ceil(remaining / rate);
+    const suffix  = unit === 'week' ? `(${weeks}wk)` : `(${daysOut}d)`;
+    const d = new Date(); d.setDate(d.getDate() + daysOut);
+    const ds = d.toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'});
+    const col = daysOut <= 7 ? 'var(--red)' : daysOut <= 30 ? 'var(--amber)' : 'var(--muted)';
+    estimate = `<span style="color:${col}">${ds} <span style="color:var(--dim);font-size:.58rem">${suffix}</span></span>`;
+  }
+  const unitLabel = (unit === 'ongoing') ? 'week' : unit;
+  const rateCell = targetKey
+    ? `<span class="cl-adj" style="gap:3px">
+        <button class="cl-adj-btn" onclick="adjTarget('${targetKey}',${targetDef},-1)" title="Lower target">−</button>
+        <span style="font-size:.64rem;color:var(--muted);min-width:36px;text-align:center">${rate}/${unitLabel}</span>
+        <button class="cl-adj-btn" onclick="adjTarget('${targetKey}',${targetDef},1)" title="Raise target">+</button>
+      </span>`
+    : `<span style="color:var(--muted)">${rate}/${unitLabel}</span>`;
+  return `<div class="cl-burn-row">
+    <span style="color:${color}">${icon} ${label}</span>
+    <span style="font-weight:700">${rStr}</span>
+    ${rateCell}
+    <span>${estimate}</span>
+  </div>`;
+}
+
+function tipCardHTML(title, items, color) {
+  return `<div class="tip-card" style="border-top:2px solid ${color}">
+    <div class="tip-title" style="color:${color}">${title}</div>
+    ${items.map(i => `<div class="tip-item">${i}</div>`).join('')}
+  </div>`;
+}
+
+// ════════════════════════════════════════════════════════
+// RENDER CHECKLIST
+// ════════════════════════════════════════════════════════
+function renderChecklist() {
+  const el = document.getElementById('cl-content');
+  if(!el) return;
+
+  // Pull targets
+  const tOverdue   = getTarget('overdue',   3);
+  const tBook      = getTarget('book',      2);
+  const tPaper     = getTarget('paper',     1);
+  const tCases     = getTarget('cases',     5);
+  const tDontKnow  = getTarget('dontknow',  3);
+  const tFreshness = getTarget('freshness', 3);
+
+  // Pull today's progress
+  const dToday   = getDailyCount('today');
+  const dOverdue = getDailyCount('overdue');
+  const dBook    = getDailyCount('book');
+  const dPaper   = getDailyCount('paper');
+  const dActive  = getDailyCount('active') > 0;
+
+  // Pull this week's progress
+  const wCases     = getWeeklyCount('cases');
+  const wDontKnow  = getWeeklyCount('dontknow');
+  const wFreshness = getWeeklyCount('freshness');
+
+  // Remaining for burn-down
+  const bookRemaining  = D.kpi.bookTotal  > 0 ? D.kpi.bookTotal  - D.kpi.bookDone  : null;
+  const paperRemaining = D.kpi.paperTotal > 0 ? D.kpi.paperTotal - D.kpi.paperDone : null;
+
+  // Daily score: per individual items done vs target (not binary per-goal)
+  const dailyDoneParts  = Math.min(dToday, D.kpi.today) + Math.min(dOverdue, tOverdue) + Math.min(dBook, tBook) + Math.min(dPaper, tPaper) + (dActive ? 1 : 0);
+  const dailyTotalParts = D.kpi.today + tOverdue + tBook + tPaper + 1;
+  const dailyPct        = dailyTotalParts > 0 ? Math.round(dailyDoneParts / dailyTotalParts * 100) : 0;
+  const weeklyDone  = [wCases >= tCases, wDontKnow >= tDontKnow, wFreshness >= tFreshness].filter(Boolean).length;
+  const weeklyTotal = 3;
+
+  const today    = new Date();
+  const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const dateStr  = today.toLocaleDateString('en-GB', {day:'numeric', month:'long', year:'numeric'});
+  const wk       = weekKey();
+  const scoreCol = dailyPct === 100 ? 'var(--green)' : dailyPct >= 60 ? 'var(--amber)' : 'var(--red)';
+
+  el.innerHTML = `
+    <!-- Summary header -->
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px">
+      <div>
+        <div style="font-size:1.3rem;font-weight:800;letter-spacing:-.03em">${dayNames[today.getDay()]}</div>
+        <div style="font-size:.7rem;color:var(--muted);margin-top:3px">${dateStr} · Resets at midnight / Monday</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:16px">
+        <div style="text-align:center">
+          <div style="font-size:1.6rem;font-weight:800;color:${scoreCol};line-height:1">${dailyPct}%</div>
+          <div style="font-size:.6rem;color:var(--muted);margin-top:2px">Daily score</div>
+        </div>
+        <div style="width:1px;height:36px;background:var(--border)"></div>
+        <div style="text-align:center">
+          <div style="font-size:1.6rem;font-weight:800;color:${weeklyDone===weeklyTotal?'var(--green)':'var(--blue)'};line-height:1">${weeklyDone}/${weeklyTotal}</div>
+          <div style="font-size:.6rem;color:var(--muted);margin-top:2px">Weekly goals</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="g2" style="margin-bottom:12px">
+
+      <!-- Daily Goals card -->
+      <div class="card" style="border-top:2px solid var(--orange)">
+        <div class="ct">Daily Goals <span class="ct-icon">📋</span>
+          <span style="font-size:.58rem;color:var(--dim);text-transform:none;letter-spacing:0;font-weight:500">${dailyDoneParts}/${dailyTotalParts} items</span>
+        </div>
+
+        ${D.kpi.today > 0
+          ? clRowHTML('📬','Due Today','items cleared today', dToday, D.kpi.today, 'today', 'daily', 'var(--orange)')
+          : `<div class="cl-item"><div class="cl-icon">📬</div><div class="cl-body"><div class="cl-label">Due Today <span style="color:var(--green);font-size:.6rem">✓</span></div><div class="cl-sub">Nothing due today · check back tomorrow</div></div></div>`
+        }
+
+        ${clRowHTML('⚠️','Clear Overdue','items resolved today',dOverdue,tOverdue,'overdue','daily','var(--red)','overdue',3)}
+        ${clRowHTML('📖','Book Chapters','chapters read today',dBook,tBook,'book','daily','var(--accent)','book',2)}
+        ${clRowHTML('📄','Papers','papers reviewed today',dPaper,tPaper,'paper','daily','var(--purple)','paper',1)}
+
+        <div class="cl-item" style="border-bottom:none">
+          <div class="cl-icon">🎯</div>
+          <div class="cl-body">
+            <div class="cl-label">Active Work Update${dActive?' <span style="color:var(--green);font-size:.6rem">✓</span>':''}</div>
+            <div class="cl-sub">Log progress on current tasks</div>
+          </div>
+          <div class="cl-check${dActive?' done':''}" onclick="toggleActive(this)">${dActive?'✓':''}</div>
+        </div>
+      </div>
+
+      <!-- Weekly Goals card -->
+      <div class="card" style="border-top:2px solid var(--blue)">
+        <div class="ct">Weekly Goals <span class="ct-icon">📅</span>
+          <span style="font-size:.58rem;color:var(--dim);text-transform:none;letter-spacing:0;font-weight:500">${wk}</span>
+        </div>
+
+        ${clRowHTML('🩻','Cases Encountered','cases logged this week',wCases,tCases,'cases','weekly','var(--amber)','cases',5)}
+        ${clRowHTML('❓',"Don't Know Topics",'topics resolved this week',wDontKnow,tDontKnow,'dontknow','weekly','var(--orange)','dontknow',3)}
+        ${clRowHTML('🧠','Modality Freshness','freshness reviews this week',wFreshness,tFreshness,'freshness','weekly','var(--green)','freshness',3)}
+
+        <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+          <div style="font-size:.62rem;color:var(--dim);line-height:1.7">
+            <strong style="color:var(--muted)">How to use:</strong> Hit <strong>+</strong> each time you complete one item.
+            Hit <strong>−</strong> to undo. Adjust targets via the Clearance Forecast below.
+            All counts reset automatically (daily at midnight, weekly on Monday).
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /g2 -->
+
+    <!-- Clearance Forecast -->
+    <div class="card" style="border-top:2px solid var(--purple);margin-bottom:12px">
+      <div class="ct">Clearance Forecast 🔮
+        <span class="ct-hint">how long at current daily targets to clear each backlog</span>
+      </div>
+      <div class="cl-burn-table">
+        <div class="cl-burn-hdr">
+          <span>Backlog / Metric</span><span>Remaining</span><span>Rate</span><span>Est. Clear Date</span>
+        </div>
+        ${burnRowHTML('⚠️','Overdue Items',        D.kpi.overdue,                         tOverdue,   'var(--red)',    'overdue',   3)}
+        ${burnRowHTML('📖','Book Chapters',         bookRemaining,                         tBook,      'var(--accent)', 'book',      2)}
+        ${burnRowHTML('📄','Papers',                paperRemaining,                        tPaper,     'var(--purple)', 'paper',     1)}
+        ${burnRowHTML('🩻','Cases Encountered',     D.kpi.cases,                           tCases,     'var(--amber)',  'cases',     5, 'week')}
+        ${burnRowHTML('❓',"Don't Know Topics",     D.kpi.dontKnow,                        tDontKnow,  'var(--orange)', 'dontknow',  3, 'week')}
+        ${burnRowHTML('🧠','Modality Stale/Fading', D.freshness.stale+D.freshness.fading,  tFreshness, 'var(--green)', 'freshness', 3, 'week')}
+      </div>
+      <div style="margin-top:8px;font-size:.61rem;color:var(--dim)">💡 Remaining counts update on Sync Sheet. Use − / + in the Rate column to adjust each target — estimates recalculate instantly.</div>
+    </div>
+
+    <!-- Recommended Plan -->
+    <div class="card" style="border-top:2px solid var(--green)">
+      <div class="ct">Recommended Daily Plan 💡</div>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:6px">
+        ${tipCardHTML('🌅 Morning (30 min)',  ['Clear all Due Today items first', 'Review any stale/fading modality', 'Quick active work check-in'], 'var(--orange)')}
+        ${tipCardHTML('☀️ Afternoon (45 min)',['Read '+tBook+' book chapter'+(tBook>1?'s':''),'Review '+tPaper+' paper'+(tPaper>1?'s':''),'Log any new cases encountered'], 'var(--accent)')}
+        ${tipCardHTML('🌙 Evening (20 min)',  ['Clear '+tOverdue+' overdue item'+(tOverdue>1?'s':''),'Update active work status','Mark daily goals complete'], 'var(--purple)')}
+        ${tipCardHTML('📌 Overdue Strategy', ['Oldest items first (most decay)','Batch similar topics together','At '+tOverdue+'/day → clear in ~'+Math.ceil(D.kpi.overdue/Math.max(1,tOverdue))+'d'], 'var(--red)')}
+      </div>
+    </div>
+  `;
+}
+
+// ════════════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════════════
+window.onload = () => {
+  render();
+  buildCharts();
+  syncNow(document.getElementById('sync-btn'));
+};
+</script>
+</body>
+</html>
