@@ -318,6 +318,9 @@ body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color
   </div>
   <div class="header-right">
     <div class="last-updated">Last sync: <span id="sync-time">—</span></div>
+    <button class="sync-btn" onclick="exportJSON()" title="Export all local data as JSON backup" style="background:transparent;border-color:var(--border)">
+      ⬇ Export
+    </button>
     <button class="sync-btn" onclick="syncNow(this)" id="sync-btn">
       <span class="spin">🔄</span> Sync Sheet
     </button>
@@ -1524,7 +1527,7 @@ function switchTab(name) {
     const btn = document.getElementById('tabn-'+t);
     if(btn) btn.classList.toggle('tab-active', t === name);
   });
-  if(name === 'checklist') renderChecklist();
+  if(name === 'checklist'){ renderChecklist(); checkPipelineCarryover(); }
 }
 
 // ════════════════════════════════════════════════════════
@@ -1751,6 +1754,99 @@ function resetChecklist(){
     .filter(k=>k.startsWith(LS)&&syncPfx.some(p=>k.slice(LS.length).startsWith(p)))
     .forEach(k=>localStorage.removeItem(k));
   renderChecklist();
+}
+
+// ════════════════════════════════════════════════════════
+// JSON EXPORT
+// ════════════════════════════════════════════════════════
+function exportJSON(){
+  const data={exportedAt:new Date().toISOString(),version:'1.0',entries:{}};
+  Object.keys(localStorage)
+    .filter(k=>k.startsWith(LS))
+    .sort()
+    .forEach(k=>{ try{data.entries[k]=JSON.parse(localStorage.getItem(k));}catch{data.entries[k]=localStorage.getItem(k);} });
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  const today=todayKey();
+  a.href=url; a.download='study-dashboard-'+today+'.json';
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+
+// ════════════════════════════════════════════════════════
+// PIPELINE CARRYOVER — roll undone items from previous days
+// ════════════════════════════════════════════════════════
+function checkPipelineCarryover(){
+  const today=todayKey();
+  // Find pipeline keys from previous days that have undone items
+  const prevKeys=Object.keys(localStorage)
+    .filter(k=>k.startsWith(LS+'pipeline_') && !k.endsWith(today))
+    .sort().reverse(); // most recent first
+
+  let undoneItems=[];
+  prevKeys.forEach(function(k){
+    try{
+      const pl=JSON.parse(localStorage.getItem(k)||'[]');
+      pl.filter(function(it){return !it.done;}).forEach(function(it){
+        if(!undoneItems.find(function(x){return x.id===it.id;})) undoneItems.push(it);
+      });
+    }catch{}
+  });
+
+  if(!undoneItems.length) return;
+
+  // Don't show if already dismissed today
+  if(localStorage.getItem(LS+'carryover_dismissed_'+today)==='1') return;
+
+  // Show banner
+  const existing=document.getElementById('carryover-banner');
+  if(existing) existing.remove();
+
+  const banner=document.createElement('div');
+  banner.id='carryover-banner';
+  banner.style.cssText='background:var(--card-alt);border:1px solid var(--amber);border-radius:10px;padding:12px 16px;margin-bottom:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;';
+  banner.innerHTML=`
+    <span style="font-size:.8rem;flex:1;min-width:180px">
+      🔁 <strong style="color:var(--amber)">${undoneItems.length} unfinished item${undoneItems.length>1?'s':''}</strong> from a previous day.
+      Roll over to today?
+    </span>
+    <div style="display:flex;gap:8px;flex-shrink:0">
+      <button onclick="rolloverPipeline()" style="padding:5px 14px;border-radius:7px;border:none;background:var(--amber);color:#000;font-weight:700;font-size:.72rem;cursor:pointer">Roll over</button>
+      <button onclick="dismissCarryover()" style="padding:5px 12px;border-radius:7px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:.72rem;cursor:pointer">Dismiss</button>
+    </div>
+  `;
+  const container=document.getElementById('tab-checklist');
+  if(container) container.insertBefore(banner, container.firstChild);
+}
+
+function rolloverPipeline(){
+  const today=todayKey();
+  const prevKeys=Object.keys(localStorage)
+    .filter(k=>k.startsWith(LS+'pipeline_') && !k.endsWith(today));
+
+  const todayPL=getPipeline();
+  let added=0;
+  prevKeys.forEach(function(k){
+    try{
+      const pl=JSON.parse(localStorage.getItem(k)||'[]');
+      pl.filter(function(it){return !it.done;}).forEach(function(it){
+        if(!todayPL.find(function(x){return x.id===it.id;})){
+          todayPL.push({...it, done:false, addedAt:Date.now()});
+          added++;
+        }
+      });
+    }catch{}
+  });
+  setPipeline(todayPL);
+  dismissCarryover();
+  renderChecklist();
+}
+
+function dismissCarryover(){
+  localStorage.setItem(LS+'carryover_dismissed_'+todayKey(),'1');
+  const banner=document.getElementById('carryover-banner');
+  if(banner) banner.remove();
 }
 
 // ════════════════════════════════════════════════════════
