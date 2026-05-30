@@ -228,6 +228,48 @@ body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color
 .tip-title { font-size:.67rem; font-weight:700; margin-bottom:7px; }
 .tip-item { font-size:.63rem; color:var(--muted); padding:2px 0 2px 10px; position:relative; }
 .tip-item::before { content:'·'; position:absolute; left:2px; }
+/* ── Time Block Schedule ── */
+.tbs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px;margin-top:6px;}
+.tbs-block{background:var(--card-alt);border:1px solid var(--border);border-radius:8px;padding:11px 13px;border-left:3px solid var(--accent);}
+.tbs-block-hdr{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;}
+.tbs-label{font-size:.74rem;font-weight:700;color:var(--text);}
+.tbs-est{font-size:.6rem;color:var(--muted);font-weight:600;white-space:nowrap;}
+.tbs-goal-row{display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--border);}
+.tbs-goal-row:last-child{border-bottom:none;}
+.tbs-goal-row.tbs-done{opacity:.35;}
+.tbs-priority{font-size:.55rem;color:var(--dim);width:10px;text-align:right;flex-shrink:0;font-weight:700;}
+.tbs-goal-icon{font-size:.72rem;flex-shrink:0;width:16px;text-align:center;}
+.tbs-goal-name{font-size:.64rem;font-weight:600;flex:1;min-width:0;}
+.tbs-goal-count{font-size:.6rem;color:var(--muted);text-align:right;white-space:nowrap;flex-shrink:0;}
+.tbs-goal-count.cnt-done{color:var(--green);}
+.tbs-goal-count.cnt-warn{color:var(--amber);}
+/* editor */
+.tbs-ed-block{background:var(--card-alt);border:1px solid var(--border-lt);border-radius:8px;padding:12px;margin-bottom:8px;position:relative;}
+.tbs-ed-row{display:flex;gap:6px;margin-bottom:8px;align-items:center;}
+.tbs-ed-row label{font-size:.6rem;color:var(--muted);width:42px;flex-shrink:0;}
+.tbs-inp{background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 8px;font-size:.68rem;font-family:inherit;width:100%;}
+.tbs-inp:focus{outline:none;border-color:var(--accent);}
+.tbs-color-row{display:flex;gap:5px;align-items:center;flex-wrap:wrap;}
+.tbs-swatch{width:18px;height:18px;border-radius:4px;cursor:pointer;border:2px solid transparent;flex-shrink:0;}
+.tbs-swatch.active{border-color:#fff;}
+.tbs-del-btn{position:absolute;top:8px;right:8px;background:transparent;border:none;color:var(--dim);cursor:pointer;font-size:.8rem;line-height:1;padding:2px 5px;border-radius:4px;}
+.tbs-del-btn:hover{color:var(--red);}
+/* drag-to-reorder goal list */
+.tbs-ed-goals{display:flex;flex-direction:column;gap:4px;margin-bottom:6px;}
+.tbs-ed-goal-item{display:flex;align-items:center;gap:7px;padding:5px 8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;cursor:default;}
+.tbs-ed-goal-item.drag-over{border-color:var(--accent);background:rgba(56,189,248,.08);}
+.tbs-drag-handle{cursor:grab;color:var(--dim);font-size:.75rem;flex-shrink:0;line-height:1;}
+.tbs-drag-handle:active{cursor:grabbing;}
+.tbs-ed-goal-rm{background:transparent;border:none;color:var(--dim);cursor:pointer;font-size:.68rem;margin-left:auto;padding:0 2px;line-height:1;flex-shrink:0;}
+.tbs-ed-goal-rm:hover{color:var(--red);}
+.tbs-ed-add-wrap{position:relative;}
+.tbs-ed-add-btn{font-size:.62rem;padding:4px 10px;border-radius:6px;border:1px dashed var(--border);background:transparent;color:var(--muted);cursor:pointer;width:100%;text-align:left;}
+.tbs-ed-add-btn:hover{border-color:var(--accent);color:var(--accent);}
+.tbs-ed-dropdown{position:absolute;left:0;top:100%;margin-top:3px;background:var(--card);border:1px solid var(--border-lt);border-radius:8px;z-index:50;min-width:200px;box-shadow:0 8px 24px rgba(0,0,0,.4);padding:4px;}
+.tbs-ed-dd-item{display:flex;align-items:center;gap:6px;padding:6px 10px;font-size:.65rem;cursor:pointer;border-radius:5px;}
+.tbs-ed-dd-item:hover{background:var(--card-hov);}
+.tbs-ed-dd-item.used{color:var(--dim);cursor:default;}
+.tbs-ed-dd-item.used:hover{background:transparent;}
 
 /* ── Pipeline ── */
 .pl-empty{font-size:.72rem;color:var(--dim);padding:14px 0;text-align:center;border:1px dashed var(--border);border-radius:8px;}
@@ -465,13 +507,6 @@ body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color
 
 </div>
 
-<!-- ── Next Steps ── -->
-<div class="card" style="border-top:2px solid var(--orange)">
-  <div class="ct">Recommended Next Steps <span class="ct-icon">🚀</span>
-    <button onclick="resetActions()" style="font-size:.58rem;padding:2px 8px;border-radius:99px;border:1px solid var(--border);background:transparent;color:var(--dim);cursor:pointer;text-transform:none;letter-spacing:0;font-weight:500">Reset</button>
-  </div>
-  <div class="action-grid" id="action-list"></div>
-</div>
 
 </div><!-- /tab-dashboard -->
 
@@ -1657,6 +1692,292 @@ function tipCardHTML(title, items, color) {
   </div>`;
 }
 
+// ════════════════════════════════════════════════════════
+// TIME-BLOCK SCHEDULE — live counts + drag-to-reorder
+// ════════════════════════════════════════════════════════
+const TBS_KEY = LS + 'time_blocks';
+const TBS_COLORS = ['#38bdf8','#4ade80','#f59e0b','#f87171','#a78bfa','#fb923c','#34d399','#e879f9'];
+
+// Goal catalogue — minsPerItem used for time estimation
+const TBS_GOALS = [
+  {key:'today',     label:'Due Today',           icon:'📬', type:'daily',  minsPerItem:5},
+  {key:'overdue',   label:'Clear Overdue',        icon:'⚠️',  type:'daily',  minsPerItem:3},
+  {key:'book',      label:'Book Chapters',        icon:'📖', type:'daily',  minsPerItem:15},
+  {key:'paper',     label:'Papers',               icon:'📄', type:'daily',  minsPerItem:20},
+  {key:'active',    label:'Active Work Update',   icon:'🎯', type:'daily',  minsPerItem:10},
+  {key:'cases',     label:'Cases Encountered',    icon:'🩻', type:'weekly', minsPerItem:5},
+  {key:'dontknow',  label:"Don't Know Topics",    icon:'❓', type:'weekly', minsPerItem:8},
+  {key:'freshness', label:'Modality Freshness',   icon:'🧠', type:'weekly', minsPerItem:5},
+];
+
+const TBS_DEFAULT = [
+  {id:'tb1', label:'Morning',         color:'#38bdf8', goals:['today','overdue']},
+  {id:'tb2', label:'Evening Block 1', color:'#4ade80', goals:['book','paper']},
+  {id:'tb3', label:'Evening Block 2', color:'#a78bfa', goals:['dontknow','freshness','active']},
+];
+
+function getTBS(){ try{ const d=JSON.parse(localStorage.getItem(TBS_KEY)); return (d&&d.length)?d:TBS_DEFAULT; }catch{ return TBS_DEFAULT; } }
+function saveTBS(blocks){ localStorage.setItem(TBS_KEY, JSON.stringify(blocks)); }
+
+// ── Live data per goal key ──
+function tbsLiveData(){
+  const out={};
+  // Due Today
+  const todayN = (typeof D!=='undefined'&&D?.kpi) ? D.kpi.today : null;
+  out.today = {n:todayN, label:todayN!=null?todayN+' due':'—', done:todayN===0};
+  // Overdue — show today's target remaining
+  const ovN = (typeof D!=='undefined'&&D?.kpi) ? D.kpi.overdue : null;
+  const ovDone = getDailyCount('overdue');
+  const ovTarget = getTarget('overdue',3);
+  const ovLeft = Math.max(0, ovTarget - ovDone);
+  out.overdue = {n:ovLeft, label: ovN!=null ? ovDone+'/'+ovTarget+' today · '+ovN+' total' : '—', done: ovLeft===0};
+  // Book
+  const bDone=getDailyCount('book'), bTgt=getTarget('book',2), bLeft=Math.max(0,bTgt-bDone);
+  out.book = {n:bLeft, label:bDone+'/'+bTgt+' done', done:bLeft===0};
+  // Paper
+  const pDone=getDailyCount('paper'), pTgt=getTarget('paper',1), pLeft=Math.max(0,pTgt-pDone);
+  out.paper = {n:pLeft, label:pDone+'/'+pTgt+' done', done:pLeft===0};
+  // Active work
+  const actDone=getDailyCount('active')>=1;
+  out.active = {n:1, label:'check in', done:actDone};
+  // Cases (weekly)
+  const cDone=getWeeklyCount('cases'), cTgt=getTarget('cases',5), cLeft=Math.max(0,cTgt-cDone);
+  out.cases = {n:cLeft, label:cDone+'/'+cTgt+' this week', done:cLeft===0};
+  // Don't Know
+  const dkN = (typeof D!=='undefined'&&D?.kpi) ? D.kpi.dontKnow : null;
+  const dkDone=getWeeklyCount('dontknow'), dkTgt=getTarget('dontknow',3), dkLeft=Math.max(0,dkTgt-dkDone);
+  out.dontknow = {n:dkLeft, label: dkN!=null ? dkDone+'/'+dkTgt+' today · '+dkN+' total' : '—', done:dkLeft===0};
+  // Freshness
+  const frN = (typeof D!=='undefined'&&D?.freshness) ? D.freshness.stale+D.freshness.fading : null;
+  const frDone=getWeeklyCount('freshness'), frTgt=getTarget('freshness',3), frLeft=Math.max(0,frTgt-frDone);
+  out.freshness = {n:frLeft, label: frN!=null ? frDone+'/'+frTgt+' today · '+frN+' stale/fading' : '—', done:frLeft===0};
+  return out;
+}
+
+// ── Estimate minutes for a block ──
+function tbsEstMins(block, live){
+  let total=0;
+  (block.goals||[]).forEach(function(k){
+    const g=TBS_GOALS.find(x=>x.key===k);
+    const ld=live[k];
+    if(!g) return;
+    if(k==='active'){ total+=10; return; }
+    const n=(ld&&ld.n!=null) ? Math.max(1,ld.n) : 1;
+    total += g.minsPerItem * n;
+  });
+  if(!total) return null;
+  return Math.round(total/5)*5 || 5;
+}
+
+let _tbsEditing=false, _tbsDraft=[];
+
+function tbsRender(){
+  const blocks=getTBS();
+  const view=document.getElementById('tbs-view');
+  if(!view) return;
+  if(!blocks.length){
+    view.innerHTML='<div style="font-size:.7rem;color:var(--dim);padding:10px 0">No blocks yet — click ✏️ Edit to add.</div>';
+    return;
+  }
+  const live=tbsLiveData();
+  view.innerHTML='<div class="tbs-grid">'+blocks.map(function(b){
+    const mins=tbsEstMins(b,live);
+    const rows=(b.goals||[]).map(function(k,i){
+      const g=TBS_GOALS.find(x=>x.key===k);
+      if(!g) return '';
+      const ld=live[k];
+      const isDone=ld&&ld.done;
+      const cntCls=isDone?'cnt-done':(ld&&ld.n>0?'cnt-warn':'');
+      return '<div class="tbs-goal-row'+(isDone?' tbs-done':'')+'">'+
+        '<span class="tbs-priority">'+(i+1)+'</span>'+
+        '<span class="tbs-goal-icon">'+g.icon+'</span>'+
+        '<span class="tbs-goal-name">'+g.label+'</span>'+
+        '<span class="tbs-goal-count '+cntCls+'">'+(ld?ld.label:'—')+'</span>'+
+        '</div>';
+    }).join('');
+    return '<div class="tbs-block" style="border-left-color:'+b.color+'">'+
+      '<div class="tbs-block-hdr">'+
+        '<div class="tbs-label">'+b.label+'</div>'+
+        (mins?'<div class="tbs-est">~'+mins+' min</div>':'')+
+      '</div>'+
+      (rows||'<span style="color:var(--dim);font-size:.6rem">No goals assigned</span>')+
+      '</div>';
+  }).join('')+'</div>';
+}
+
+function tbsStartEdit(){
+  _tbsDraft=getTBS().map(b=>({...b,goals:[...(b.goals||[])]}));
+  _tbsEditing=true;
+  document.getElementById('tbs-view').style.display='none';
+  document.getElementById('tbs-editor').style.display='';
+  document.getElementById('tbs-edit-btn').style.display='none';
+  document.getElementById('tbs-add-btn').style.display='';
+  document.getElementById('tbs-save-btn').style.display='';
+  document.getElementById('tbs-cancel-btn').style.display='';
+  tbsRenderEditor();
+}
+
+function tbsCancelEdit(){
+  _tbsEditing=false;
+  document.getElementById('tbs-view').style.display='';
+  document.getElementById('tbs-editor').style.display='none';
+  document.getElementById('tbs-edit-btn').style.display='';
+  document.getElementById('tbs-add-btn').style.display='none';
+  document.getElementById('tbs-save-btn').style.display='none';
+  document.getElementById('tbs-cancel-btn').style.display='none';
+}
+
+function tbsFlushEditorState(){
+  _tbsDraft.forEach(function(b){
+    const el=document.getElementById('tbs-ed-'+b.id);
+    if(!el) return;
+    b.label=el.querySelector('.tbs-inp-label').value.trim()||b.label;
+  });
+}
+
+function tbsSave(){
+  tbsFlushEditorState();
+  saveTBS(_tbsDraft);
+  tbsRender();
+  tbsCancelEdit();
+}
+
+function tbsAddBlock(){
+  const id='tb'+Date.now();
+  _tbsDraft.push({id,label:'New Block',color:TBS_COLORS[_tbsDraft.length%TBS_COLORS.length],goals:[]});
+  tbsFlushEditorState();
+  tbsRenderEditor();
+  setTimeout(function(){ const el=document.getElementById('tbs-ed-'+id); if(el)el.scrollIntoView({behavior:'smooth',block:'nearest'}); },50);
+}
+
+function tbsDeleteBlock(id){
+  tbsFlushEditorState();
+  _tbsDraft=_tbsDraft.filter(b=>b.id!==id);
+  tbsRenderEditor();
+}
+
+function tbsSetColor(id,color){
+  tbsFlushEditorState();
+  const b=_tbsDraft.find(x=>x.id===id);
+  if(b) b.color=color;
+  tbsRenderEditor();
+}
+
+function tbsRemoveGoal(blockId,key){
+  tbsFlushEditorState();
+  const b=_tbsDraft.find(x=>x.id===blockId);
+  if(b) b.goals=b.goals.filter(k=>k!==key);
+  tbsRenderEditor();
+}
+
+function tbsAddGoal(blockId,key){
+  const b=_tbsDraft.find(x=>x.id===blockId);
+  if(b&&!b.goals.includes(key)) b.goals.push(key);
+  // close dropdown
+  document.querySelectorAll('.tbs-ed-dropdown').forEach(d=>d.remove());
+  tbsRenderEditor();
+}
+
+function tbsToggleDropdown(blockId){
+  // Close any open
+  const existing=document.querySelector('.tbs-ed-dropdown[data-block="'+blockId+'"]');
+  if(existing){existing.remove();return;}
+  document.querySelectorAll('.tbs-ed-dropdown').forEach(d=>d.remove());
+  const b=_tbsDraft.find(x=>x.id===blockId);
+  if(!b) return;
+  const wrap=document.querySelector('#tbs-ed-'+blockId+' .tbs-ed-add-wrap');
+  if(!wrap) return;
+  const dd=document.createElement('div');
+  dd.className='tbs-ed-dropdown'; dd.dataset.block=blockId;
+  TBS_GOALS.forEach(function(g){
+    const used=b.goals.includes(g.key);
+    const item=document.createElement('div');
+    item.className='tbs-ed-dd-item'+(used?' used':'');
+    item.innerHTML=g.icon+' '+g.label+(used?' <span style="margin-left:auto;font-size:.55rem;color:var(--dim)">added</span>':'');
+    if(!used) item.onclick=function(){tbsAddGoal(blockId,g.key);};
+    dd.appendChild(item);
+  });
+  wrap.appendChild(dd);
+  // Close on outside click
+  setTimeout(function(){
+    document.addEventListener('click',function handler(e){
+      if(!dd.contains(e.target)){dd.remove();document.removeEventListener('click',handler);}
+    });
+  },0);
+}
+
+// ── Drag-to-reorder ──
+let _dragBlock=null, _dragIdx=null;
+
+function tbsDragStart(e,blockId,idx){
+  _dragBlock=blockId; _dragIdx=idx;
+  e.dataTransfer.effectAllowed='move';
+}
+function tbsDragOver(e,blockId,idx){
+  e.preventDefault();
+  document.querySelectorAll('.tbs-ed-goal-item').forEach(el=>el.classList.remove('drag-over'));
+  e.currentTarget.classList.add('drag-over');
+}
+function tbsDragLeave(e){ e.currentTarget.classList.remove('drag-over'); }
+function tbsDrop(e,blockId,idx){
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  if(_dragBlock!==blockId||_dragIdx===idx) {
+    const b=_tbsDraft.find(x=>x.id===blockId);
+    if(b&&_dragBlock===blockId){
+      const moved=b.goals.splice(_dragIdx,1)[0];
+      b.goals.splice(idx,0,moved);
+      tbsRenderEditor();
+    }
+  }
+  _dragBlock=null; _dragIdx=null;
+}
+
+function tbsRenderEditor(){
+  const ed=document.getElementById('tbs-editor');
+  if(!ed) return;
+  ed.innerHTML=_tbsDraft.map(function(b){
+    const goalRows=(b.goals||[]).map(function(k,i){
+      const g=TBS_GOALS.find(x=>x.key===k);
+      if(!g) return '';
+      const bid=b.id.replace(/'/g,"\\'");
+      return '<div class="tbs-ed-goal-item" draggable="true"'+
+        ' ondragstart="tbsDragStart(event,\''+bid+'\','+i+')"'+
+        ' ondragover="tbsDragOver(event,\''+bid+'\','+i+')"'+
+        ' ondragleave="tbsDragLeave(event)"'+
+        ' ondrop="tbsDrop(event,\''+bid+'\','+i+')">'+
+        '<span class="tbs-drag-handle" title="Drag to reorder">⠿</span>'+
+        '<span style="font-size:.72rem">'+g.icon+'</span>'+
+        '<span style="font-size:.64rem;font-weight:600;flex:1">'+g.label+'</span>'+
+        '<button class="tbs-ed-goal-rm" onclick="tbsRemoveGoal(\''+bid+'\',\''+k+'\')">✕</button>'+
+        '</div>';
+    }).join('');
+    const bid=b.id.replace(/'/g,"\\'");
+    return '<div class="tbs-ed-block" id="tbs-ed-'+b.id+'" style="border-left:3px solid '+b.color+'">'+
+      '<button class="tbs-del-btn" onclick="tbsDeleteBlock(\''+bid+'\')" title="Remove block">✕</button>'+
+      '<div class="tbs-ed-row">'+
+        '<label>Label</label>'+
+        '<input class="tbs-inp tbs-inp-label" value="'+b.label.replace(/"/g,'&quot;')+'" placeholder="Block name">'+
+      '</div>'+
+      '<div class="tbs-ed-row" style="align-items:flex-start;margin-bottom:4px">'+
+        '<label style="padding-top:2px">Goals</label>'+
+        '<div style="flex:1">'+
+          '<div class="tbs-ed-goals">'+goalRows+'</div>'+
+          '<div class="tbs-ed-add-wrap">'+
+            '<button class="tbs-ed-add-btn" onclick="tbsToggleDropdown(\''+bid+'\')">+ Add goal</button>'+
+          '</div>'+
+        '</div>'+
+      '</div>'+
+      '<div class="tbs-ed-row" style="margin-bottom:0">'+
+        '<label>Color</label>'+
+        '<div class="tbs-color-row">'+
+          TBS_COLORS.map(c=>'<div class="tbs-swatch'+(b.color===c?' active':'')+'" style="background:'+c+'" onclick="tbsSetColor(\''+bid+'\',\''+c+'\')"></div>').join('')+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+
 // ═══════════════════════════════════════════
 // PIPELINE — today's task list (localStorage)
 // ═══════════════════════════════════════════
@@ -2062,15 +2383,18 @@ function renderChecklist() {
       <div style="margin-top:8px;font-size:.61rem;color:var(--dim)">💡 Remaining counts update on Sync Sheet. Use − / + in the Rate column to adjust each target — estimates recalculate instantly.</div>
     </div>
 
-    <!-- Recommended Plan -->
-    <div class="card" style="border-top:2px solid var(--green)">
-      <div class="ct">Recommended Daily Plan 💡</div>
-      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:6px">
-        ${tipCardHTML('🌅 Morning (30 min)',  ['Clear all Due Today items first', 'Review any stale/fading modality', 'Quick active work check-in'], 'var(--orange)')}
-        ${tipCardHTML('☀️ Afternoon (45 min)',['Read '+tBook+' book chapter'+(tBook>1?'s':''),'Review '+tPaper+' paper'+(tPaper>1?'s':''),'Log any new cases encountered'], 'var(--accent)')}
-        ${tipCardHTML('🌙 Evening (20 min)',  ['Clear '+tOverdue+' overdue item'+(tOverdue>1?'s':''),'Update active work status','Mark daily goals complete'], 'var(--purple)')}
-        ${tipCardHTML('📌 Overdue Strategy', ['Oldest items first (most decay)','Batch similar topics together','At '+tOverdue+'/day → clear in ~'+Math.ceil(D.kpi.overdue/Math.max(1,tOverdue))+'d'], 'var(--red)')}
+    <!-- Time Block Schedule -->
+    <div class="card" style="border-top:2px solid var(--green)" id="tbs-card">
+      <div class="ct">Daily Schedule 🗓
+        <div style="display:flex;gap:6px">
+          <button id="tbs-edit-btn" onclick="tbsStartEdit()" style="font-size:.58rem;padding:2px 10px;border-radius:99px;border:1px solid var(--border);background:transparent;color:var(--dim);cursor:pointer;font-weight:500">✏️ Edit</button>
+          <button id="tbs-add-btn"  onclick="tbsAddBlock()" style="display:none;font-size:.58rem;padding:2px 10px;border-radius:99px;border:1px solid var(--accent);background:transparent;color:var(--accent);cursor:pointer;font-weight:600">+ Block</button>
+          <button id="tbs-save-btn" onclick="tbsSave()"      style="display:none;font-size:.58rem;padding:2px 10px;border-radius:99px;border:none;background:var(--accent);color:#fff;cursor:pointer;font-weight:600">Save</button>
+          <button id="tbs-cancel-btn" onclick="tbsCancelEdit()" style="display:none;font-size:.58rem;padding:2px 10px;border-radius:99px;border:1px solid var(--border);background:transparent;color:var(--dim);cursor:pointer;font-weight:500">Cancel</button>
+        </div>
       </div>
+      <div id="tbs-view"></div>
+      <div id="tbs-editor" style="display:none"></div>
     </div>
 
     <!-- History Log -->
@@ -2160,6 +2484,8 @@ function renderChecklist() {
       })()}
     </div>
   `;
+  // Render time-block schedule after DOM is set
+  tbsRender();
 }
 
 // ════════════════════════════════════════════════════════
