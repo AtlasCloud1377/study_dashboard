@@ -3018,11 +3018,11 @@ function renderChecklistV2(){
     const CARD_T_BOT=118,CARD_B_TOP=158;
     const MIN_B=30; // min block width in minutes
 
-    // Block data — 30 min per task; width = task count × 30 min
+    // Block data — only blocks with items; width = task count × 30 min
     const bData=blocks.map(function(b){
       const bi=items.filter(function(x){return x.blockId===b.id;});
-      return {b:b,bi:bi,wMin:Math.max(bi.length*30,MIN_B)};
-    });
+      return {b:b,bi:bi,wMin:bi.length*30};
+    }).filter(function(d){return d.bi.length>0;});
 
     // Start times — stored or defaulted sequentially from 6am
     const _starts=getTBSStarts();
@@ -3069,17 +3069,15 @@ function renderChecklistV2(){
       const tip='<div class="tl2-tip">'+(taskRows||'<div class="tl-mc-empty">No tasks — tap +block on a task above</div>')+'</div>';
       const estStr=p.d.wMin>=60?(p.d.wMin/60).toFixed(1)+'h':'~'+p.d.wMin+' min';
       const isTop=i%2===0;
+      const cardInner='<div class="tl-mc-hdr"><span class="tl-mc-icon">'+firstIcon+'</span><span class="tl-mc-name" style="color:'+b.color+'">'+b.label+'</span></div>'
+        +'<div class="tl-mc-meta">'+bi.length+' task'+(bi.length!==1?'s':'')+' · '+estStr+'</div>'
+        +tip;
+      const cardBase=' onmousedown="event.stopPropagation()" ondragstart="return false"';
       if(isTop){
-        cardsHTML+='<div class="tl2-card top" data-tlcard="'+b.id+'" style="bottom:'+(WH-CARD_T_BOT)+'px;left:'+p.cardLeftPct+'%;width:'+p.cardWidPct+'%;border-color:'+b.color+'">'
-          +'<div class="tl-mc-hdr"><span class="tl-mc-icon">'+firstIcon+'</span><span class="tl-mc-name" style="color:'+b.color+'">'+b.label+'</span></div>'
-          +'<div class="tl-mc-meta">'+bi.length+' task'+(bi.length!==1?'s':'')+' · '+estStr+'</div>'
-          +tip+'</div>';
+        cardsHTML+='<div class="tl2-card top" data-tlcard="'+b.id+'" style="bottom:'+(WH-CARD_T_BOT)+'px;left:'+p.cardLeftPct+'%;width:'+p.cardWidPct+'%;border-color:'+b.color+'"'+cardBase+'>'+cardInner+'</div>';
         cardsHTML+='<div data-tlconn="'+b.id+'" style="position:absolute;left:'+p.midPct+'%;width:2px;transform:translateX(-50%);top:'+CARD_T_BOT+'px;height:'+(BAR_T-CARD_T_BOT)+'px;background:var(--border-lt)"></div>';
       } else {
-        cardsHTML+='<div class="tl2-card bot" data-tlcard="'+b.id+'" style="top:'+CARD_B_TOP+'px;left:'+p.cardLeftPct+'%;width:'+p.cardWidPct+'%;border-color:'+b.color+'">'
-          +'<div class="tl-mc-hdr"><span class="tl-mc-icon">'+firstIcon+'</span><span class="tl-mc-name" style="color:'+b.color+'">'+b.label+'</span></div>'
-          +'<div class="tl-mc-meta">'+bi.length+' task'+(bi.length!==1?'s':'')+' · '+estStr+'</div>'
-          +tip+'</div>';
+        cardsHTML+='<div class="tl2-card bot" data-tlcard="'+b.id+'" style="top:'+CARD_B_TOP+'px;left:'+p.cardLeftPct+'%;width:'+p.cardWidPct+'%;border-color:'+b.color+'"'+cardBase+'>'+cardInner+'</div>';
         cardsHTML+='<div data-tlconn="'+b.id+'" style="position:absolute;left:'+p.midPct+'%;width:2px;transform:translateX(-50%);top:'+BAR_B+'px;height:'+(CARD_B_TOP-BAR_B)+'px;background:var(--border-lt)"></div>';
       }
     });
