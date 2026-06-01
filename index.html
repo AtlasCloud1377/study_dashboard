@@ -206,9 +206,13 @@ body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color
   background:#0a1422; border-left:1px solid var(--border);
   z-index:101; display:flex; flex-direction:column;
   transform:translateX(100%); transition:transform .25s ease; overflow:hidden;
+  /* Push content below Dynamic Island on iPhone */
+  padding-top:env(safe-area-inset-top);
 }
 #drawer.open { transform:translateX(0); }
 #drawer-head { display:flex; align-items:center; justify-content:space-between; padding:16px 20px 12px; border-bottom:1px solid var(--border); flex-shrink:0; }
+.drawer-swipe-hint{display:none;font-size:.58rem;color:var(--dim);text-align:center;padding:6px 0 2px;letter-spacing:.04em;flex-shrink:0;}
+@media(max-width:640px){.drawer-swipe-hint{display:block;}}
 #drawer-title { font-size:.9rem; font-weight:700; }
 #drawer-close { width:26px; height:26px; border-radius:6px; border:1px solid var(--border); background:transparent; color:var(--muted); cursor:pointer; font-size:.95rem; display:flex; align-items:center; justify-content:center; }
 #drawer-close:hover { background:var(--card-hov); color:var(--text); }
@@ -492,7 +496,24 @@ body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color
 .plan-cal{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px 14px;}
 .plan-cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
 .plan-cal-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
-.plan-cal-inner{min-width:0;} /* desktop: no min-width needed */
+.plan-cal-inner{min-width:0;}
+/* Mobile vertical list view */
+.plan-list-view{display:flex;flex-direction:column;gap:2px;}
+.plan-list-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;border:1px solid transparent;cursor:pointer;transition:background .15s,border-color .15s;min-height:52px;}
+.plan-list-row.plan-today{border-color:var(--accent);border-width:2px;background:rgba(56,189,248,.04);}
+.plan-list-row.plan-past{opacity:.82;}
+.plan-list-row.plan-open{background:rgba(56,189,248,.08);border-color:var(--accent);}
+.plan-list-date{flex-shrink:0;width:36px;text-align:center;}
+.plan-list-dayname{font-size:.55rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;}
+.plan-list-daynum{font-size:1.05rem;font-weight:800;color:var(--text);line-height:1.1;}
+.plan-list-row.plan-today .plan-list-daynum{color:var(--accent);}
+.plan-list-content{flex:1;min-width:0;}
+.plan-list-item{font-size:.68rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.5;}
+.plan-list-item.done{color:var(--dim);text-decoration:line-through;}
+.plan-list-more{font-size:.6rem;color:var(--accent);}
+.plan-list-badge{font-size:.58rem;font-weight:700;padding:2px 7px;border-radius:99px;flex-shrink:0;}
+.plan-list-prog{height:2px;border-radius:1px;background:var(--border);margin-top:5px;overflow:hidden;}
+.plan-list-prog-fill{height:100%;border-radius:1px;transition:width .3s;}
 .plan-cal-title{font-size:.88rem;font-weight:800;letter-spacing:-.02em;}
 .plan-nav-btn{width:28px;height:28px;border-radius:7px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:.85rem;display:flex;align-items:center;justify-content:center;transition:.15s;}
 .plan-nav-btn:hover{background:var(--card-hov);border-color:var(--border-lt);color:var(--text);}
@@ -913,6 +934,8 @@ body.mode-refined #dontknow-kpi-badge{background:rgba(167,139,250,.12) !importan
 <!-- ── Drawer ── -->
 <div id="drawer-overlay" onclick="closePanel()"></div>
 <div id="drawer">
+  <!-- Mobile swipe hint — only visible on small screens -->
+  <div class="drawer-swipe-hint">← swipe to close</div>
   <div id="drawer-head">
     <div id="drawer-title">Panel</div>
     <button id="drawer-close" onclick="closePanel()">✕</button>
@@ -1897,26 +1920,37 @@ document.addEventListener('click',  function(e){
   if(!e.target.closest('#plan-cell-tooltip')) hideCellTip();
 }, true);
 
-// ── Swipe right to close expansion panel (mobile) ──
-var _swipeStartX = 0, _swipeStartY = 0, _swipingInExp = false;
+// ── Swipe right to close: expansion panel + dashboard drawer ──
+var _swipeStartX = 0, _swipeStartY = 0, _swipingInExp = false, _swipingInDrawer = false;
+
 document.addEventListener('touchstart', function(e){
   _swipingInExp = false;
+  _swipingInDrawer = false;
+  _swipeStartX = e.touches[0].clientX;
+  _swipeStartY = e.touches[0].clientY;
+
+  // Planning expansion panel
   var exp = document.querySelector('.plan-exp');
-  if(exp && exp.contains(e.target)){
-    _swipeStartX = e.touches[0].clientX;
-    _swipeStartY = e.touches[0].clientY;
-    _swipingInExp = true;
-  }
+  if(exp && exp.contains(e.target)) _swipingInExp = true;
+
+  // Dashboard drawer
+  var drawer = document.getElementById('drawer');
+  if(drawer && drawer.classList.contains('open') && drawer.contains(e.target)) _swipingInDrawer = true;
 }, {passive: true});
+
 document.addEventListener('touchend', function(e){
-  if(!_swipingInExp || !_planOpenDk) return;
-  _swipingInExp = false;
   var dx = e.changedTouches[0].clientX - _swipeStartX;
   var dy = e.changedTouches[0].clientY - _swipeStartY;
-  // Right swipe: >70px horizontal, clearly more horizontal than vertical
-  if(dx > 70 && Math.abs(dx) > Math.abs(dy) * 1.5){
+  var isRightSwipe = dx > 70 && Math.abs(dx) > Math.abs(dy) * 1.5;
+
+  if(isRightSwipe && _swipingInExp && _planOpenDk){
     planToggleDay(_planOpenDk);
   }
+  if(isRightSwipe && _swipingInDrawer){
+    closePanel();
+  }
+  _swipingInExp = false;
+  _swipingInDrawer = false;
 }, {passive: true});
 
 function planResetToday(){
@@ -2164,6 +2198,58 @@ function renderPlanning() {
   // Rebuild sidebar with buttons appended before the closing tag
   const sidebarFull = sidebarHTML.slice(0,-6) + sidebarBtnsHTML + '</div>';
 
+  // ── Mobile: vertical list view ──
+  const isMobile = window.innerWidth <= 640;
+  let calBodyHTML;
+  if(isMobile){
+    const DAY_ABBR = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    let listHTML = '<div class="plan-list-view">';
+    dayData.forEach(function(dd){
+      const isOpen = dd.dk === _planOpenDk;
+      const dt = new Date(year, month, dd.d);
+      const dayAbbr = DAY_ABBR[dt.getDay()];
+      const badgeColor = dd.isToday ? '#38bdf8' : dd.isPast ? '#4ade80' : '#60a5fa';
+      const badgeBg    = dd.isToday ? 'rgba(56,189,248,.15)' : dd.isPast ? 'rgba(74,222,128,.12)' : 'rgba(96,165,250,.12)';
+      const showProg   = (dd.isPast || dd.isToday) && dd.total > 0;
+      const progPct    = showProg ? Math.round(dd.done/dd.total*100) : 0;
+      const progCol    = progPct===100?'var(--green)':progPct>=60?'var(--blue)':'var(--amber)';
+      const previewItems = dd.items.slice(0,2).map(function(it){
+        return '<div class="plan-list-item'+(it.done?' done':'')+'">'+it.name+'</div>';
+      }).join('');
+      const remaining = dd.n - Math.min(dd.n, 2);
+      const cls = ['plan-list-row',
+        isOpen     ? 'plan-open'  : '',
+        dd.isToday ? 'plan-today' : '',
+        dd.isPast  ? 'plan-past'  : ''
+      ].filter(Boolean).join(' ');
+      listHTML += '<div class="'+cls+'" onclick="planToggleDay(\''+dd.dk+'\')">'
+        +'<div class="plan-list-date">'
+          +'<div class="plan-list-dayname">'+dayAbbr+'</div>'
+          +'<div class="plan-list-daynum">'+dd.d+'</div>'
+        +'</div>'
+        +'<div class="plan-list-content">'
+          +previewItems
+          +(remaining>0?'<div class="plan-list-more">+'+remaining+' more</div>':'')
+          +(showProg?'<div class="plan-list-prog"><div class="plan-list-prog-fill" style="width:'+progPct+'%;background:'+progCol+'"></div></div>':'')
+        +'</div>'
+        +(dd.n>0?'<div class="plan-list-badge" style="color:'+badgeColor+';background:'+badgeBg+'">'+dd.n+'</div>':'')
+        +'</div>';
+      // Expansion panel right after the open day row
+      if(isOpen) listHTML += _planDayV2HTML(dd.dk);
+    });
+    listHTML += '</div>';
+    calBodyHTML = listHTML;
+  } else {
+    // Desktop: horizontal grid
+    calBodyHTML =
+      '<div class="plan-cal-scroll">'
+        +'<div class="plan-cal-inner">'
+          +'<div class="plan-dow-row">'+DOW.map(function(d){ return '<div class="plan-dow">'+d+'</div>'; }).join('')+'</div>'
+          +'<div class="plan-grid">'+gridHTML+'</div>'
+        +'</div>'
+      +'</div>';
+  }
+
   // ── Full render ──
   root.innerHTML = topStripHTML
     +'<div class="plan-wrap">'
@@ -2174,13 +2260,7 @@ function renderPlanning() {
         +'<div class="plan-cal-title">'+MONTH_NAMES[month]+' '+year+'</div>'
         +'<button class="plan-nav-btn" onclick="planNavMonth(1)">▶</button>'
       +'</div>'
-      // Scrollable wrapper — on mobile this scrolls horizontally; on desktop it's invisible
-      +'<div class="plan-cal-scroll">'
-        +'<div class="plan-cal-inner">'
-          +'<div class="plan-dow-row">'+DOW.map(function(d){ return '<div class="plan-dow">'+d+'</div>'; }).join('')+'</div>'
-          +'<div class="plan-grid">'+gridHTML+'</div>'
-        +'</div>'
-      +'</div>'
+      +calBodyHTML
     +'</div>'
     +'</div>';
 }
