@@ -490,10 +490,12 @@ body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color
 .plan-day-slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px;}
 /* ── Mode: Refined ── */
 /* Dashboard top layout: KPI (left) + Heatmap (right) */
-body.mode-refined #top-section-wrap{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:stretch;margin-bottom:12px;}
+body.mode-refined #top-section-wrap{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start;margin-bottom:12px;}
 body.mode-refined .kpi-row{margin-bottom:0;}
-body.mode-refined #heatmap-top-slot{display:block !important;height:100%;}
-body.mode-refined #study-heatmap-top{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:320px;}
+body.mode-refined #right-column-wrap{display:flex !important;flex-direction:column;gap:12px;}
+body.mode-refined #heatmap-top-slot{display:block !important;}
+body.mode-refined #study-heatmap-top{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:160px;}
+body.mode-refined #study-consistency-card{display:block;}
 body.mode-refined #heatmap-bottom-card{display:none;}
 /* 1. Larger cell item text */
 body.mode-refined .plan-cell-item{font-size:.63rem;}
@@ -605,10 +607,25 @@ body.mode-refined #dontknow-kpi-badge{background:rgba(167,139,250,.12) !importan
 
 </div><!-- /kpi-row -->
 
-<!-- Top heatmap slot (refined mode only) -->
-<div id="heatmap-top-slot" class="card" style="border-top:2px solid var(--green);display:none">
-  <div class="ct">Study Activity 🟩 <span id="heatmap-top-hint" class="ct-hint"></span></div>
-  <div id="study-heatmap-top" style="min-height:90px"></div>
+<!-- Right column: heatmap + widget (refined mode only) -->
+<div id="right-column-wrap" style="display:flex;flex-direction:column;gap:12px;display:none">
+  <!-- Top heatmap slot -->
+  <div id="heatmap-top-slot" class="card" style="border-top:2px solid var(--green)">
+    <div class="ct">Study Activity 🟩 <span id="heatmap-top-hint" class="ct-hint"></span></div>
+    <div id="study-heatmap-top" style="min-height:90px"></div>
+  </div>
+
+  <!-- Study Consistency Widget -->
+  <div id="study-consistency-card" class="card" style="border-top:2px solid var(--purple)">
+    <div class="ct">Study Consistency 🎯</div>
+    <div id="study-consistency-content" style="font-size:.75rem;line-height:1.8;color:var(--muted)">
+      <div>🔥 Current Streak: <strong id="sc-current-streak" style="color:var(--orange)">—</strong></div>
+      <div>🏆 Best Streak: <strong id="sc-best-streak" style="color:var(--accent)">—</strong></div>
+      <div style="border-top:1px solid var(--border);padding-top:10px;margin-top:10px;color:var(--dim)">
+        <div>📊 <strong id="sc-stats-month" style="color:var(--muted)">—</strong></div>
+      </div>
+    </div>
+  </div>
 </div>
 
 </div><!-- /top-section-wrap -->
@@ -970,6 +987,7 @@ function render() {
 
   // Heatmap
   renderHeatmap();
+  renderStudyConsistency();
 
   // Active Work
   document.getElementById('work-list').innerHTML = D.work.map(w => {
@@ -3206,6 +3224,56 @@ function renderHeatmap(){
 }
 
 // ════════════════════════════════════════════════════════
+// STUDY CONSISTENCY WIDGET — current/best streak + stats
+// ════════════════════════════════════════════════════════
+function renderStudyConsistency(){
+  const hist=getHistory();
+  const hMap={};hist.forEach(function(h){hMap[h.date]=h;});
+  const today=new Date();today.setHours(0,0,0,0);
+
+  // Calculate current streak (backwards from today)
+  let curStreak=0;
+  const chk=new Date(today);
+  while(true){
+    const dk=chk.getFullYear()+'-'+String(chk.getMonth()+1).padStart(2,'0')+'-'+String(chk.getDate()).padStart(2,'0');
+    if(hMap[dk]&&hMap[dk].doneCount>0){
+      curStreak++;
+      chk.setDate(chk.getDate()-1);
+    }else break;
+  }
+
+  // Calculate best streak
+  let bestStreak=0;
+  const dates=Object.keys(hMap).filter(function(k){return hMap[k].doneCount>0;}).sort();
+  let run=0;dates.forEach(function(dk,i){
+    run=i>0&&new Date(dates[i-1]).getTime()+86400000===new Date(dk).getTime()?run+1:1;
+    bestStreak=Math.max(bestStreak,run);
+  });
+
+  // Calculate this month's stats
+  const thisMonthStart=new Date(today.getFullYear(),today.getMonth(),1);
+  const thisMonthEnd=new Date(today.getFullYear(),today.getMonth()+1,0);
+  const monthItems=hist.filter(function(h){
+    const hd=new Date(h.date);return hd>=thisMonthStart&&hd<=thisMonthEnd;
+  });
+  const monthPlanned=monthItems.reduce(function(s,h){return s+(h.total||0);},0);
+  const monthDone=monthItems.reduce(function(s,h){return s+h.doneCount;},0);
+  const monthActive=monthItems.length;
+  const monthPct=monthPlanned>0?Math.round(monthDone/monthPlanned*100):0;
+
+  // Update DOM
+  const statsLine=monthActive+' days · '+monthPlanned+' planned · '+monthDone+' done ('+monthPct+'%)';
+
+  const curEl=document.getElementById('sc-current-streak');
+  const bestEl=document.getElementById('sc-best-streak');
+  const statsEl=document.getElementById('sc-stats-month');
+
+  if(curEl) curEl.textContent=curStreak+'d';
+  if(bestEl) bestEl.textContent=bestStreak+'d';
+  if(statsEl) statsEl.textContent=statsLine;
+}
+
+// ════════════════════════════════════════════════════════
 // SHARED HISTORY RENDERER
 // ════════════════════════════════════════════════════════
 function renderHistoryHTML(){
@@ -3830,6 +3898,7 @@ function autoSaveDayIfNeeded(){
 
       // Refresh heatmap and planning sidebar which read from history
       renderHeatmap();
+      renderStudyConsistency();
       if(document.getElementById('tab-planning')?.style.display!=='none') renderPlanning();
 
       _showAutoSaveToast(shortStr,
