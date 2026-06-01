@@ -491,6 +491,8 @@ body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color
 /* Calendar panel */
 .plan-cal{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px 14px;}
 .plan-cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.plan-cal-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.plan-cal-inner{min-width:0;} /* desktop: no min-width needed */
 .plan-cal-title{font-size:.88rem;font-weight:800;letter-spacing:-.02em;}
 .plan-nav-btn{width:28px;height:28px;border-radius:7px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:.85rem;display:flex;align-items:center;justify-content:center;transition:.15s;}
 .plan-nav-btn:hover{background:var(--card-hov);border-color:var(--border-lt);color:var(--text);}
@@ -609,6 +611,11 @@ body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color
   .plan-cell-day{font-size:.72rem;}
   .plan-cell-item{font-size:.6rem;}
 
+  /* Calendar — horizontal scroll on mobile */
+  .plan-cal-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -4px;padding:0 4px;}
+  .plan-cal-inner{min-width:420px;}
+  /* Day expansion — scroll margin clears Dynamic Island + header */
+  .plan-exp{scroll-margin-top:calc(env(safe-area-inset-top) + 80px);}
   /* Day expansion — full width slots */
   .plan-day-slots{grid-template-columns:1fr !important;}
   .plan-exp{padding:12px 10px 10px;}
@@ -1891,19 +1898,23 @@ document.addEventListener('click',  function(e){
 }, true);
 
 // ── Swipe right to close expansion panel (mobile) ──
-var _swipeStartX = 0, _swipeStartY = 0;
+var _swipeStartX = 0, _swipeStartY = 0, _swipingInExp = false;
 document.addEventListener('touchstart', function(e){
-  if(e.target.closest('#plan-exp-panel')){
+  _swipingInExp = false;
+  var exp = document.querySelector('.plan-exp');
+  if(exp && exp.contains(e.target)){
     _swipeStartX = e.touches[0].clientX;
     _swipeStartY = e.touches[0].clientY;
+    _swipingInExp = true;
   }
 }, {passive: true});
 document.addEventListener('touchend', function(e){
-  if(!e.target.closest('#plan-exp-panel') || !_planOpenDk) return;
+  if(!_swipingInExp || !_planOpenDk) return;
+  _swipingInExp = false;
   var dx = e.changedTouches[0].clientX - _swipeStartX;
   var dy = e.changedTouches[0].clientY - _swipeStartY;
-  // Right swipe: dx > 70px and clearly horizontal (dx > 2× vertical)
-  if(dx > 70 && Math.abs(dx) > Math.abs(dy) * 2){
+  // Right swipe: >70px horizontal, clearly more horizontal than vertical
+  if(dx > 70 && Math.abs(dx) > Math.abs(dy) * 1.5){
     planToggleDay(_planOpenDk);
   }
 }, {passive: true});
@@ -1920,18 +1931,17 @@ function planResetToday(){
 function planToggleDay(dk) {
   _planOpenDk = (_planOpenDk === dk) ? null : dk;
   renderPlanning();
-  // On mobile: scroll expansion panel into view below sticky header
+  // On mobile: scroll expansion panel into view, clear of Dynamic Island + sticky header
   if(_planOpenDk && window.innerWidth <= 640){
     setTimeout(function(){
       var exp = document.querySelector('.plan-exp');
       if(!exp) return;
+      // Measure actual header bottom position (already accounts for Dynamic Island padding)
       var header = document.querySelector('.header');
-      var headerH = header ? header.offsetHeight : 60;
-      var safeTop = parseFloat(getComputedStyle(document.documentElement).paddingTop) || 0;
-      var offset = headerH + safeTop + 12;
-      var expTop = exp.getBoundingClientRect().top + window.scrollY - offset;
-      window.scrollTo({ top: expTop, behavior: 'smooth' });
-    }, 80);
+      var headerBottom = header ? header.getBoundingClientRect().bottom : 80;
+      var scrollTarget = exp.getBoundingClientRect().top + window.scrollY - headerBottom - 10;
+      window.scrollTo({ top: Math.max(0, scrollTarget), behavior: 'smooth' });
+    }, 100);
   }
 }
 
@@ -2164,8 +2174,13 @@ function renderPlanning() {
         +'<div class="plan-cal-title">'+MONTH_NAMES[month]+' '+year+'</div>'
         +'<button class="plan-nav-btn" onclick="planNavMonth(1)">▶</button>'
       +'</div>'
-      +'<div class="plan-dow-row">'+DOW.map(function(d){ return '<div class="plan-dow">'+d+'</div>'; }).join('')+'</div>'
-      +'<div class="plan-grid">'+gridHTML+'</div>'
+      // Scrollable wrapper — on mobile this scrolls horizontally; on desktop it's invisible
+      +'<div class="plan-cal-scroll">'
+        +'<div class="plan-cal-inner">'
+          +'<div class="plan-dow-row">'+DOW.map(function(d){ return '<div class="plan-dow">'+d+'</div>'; }).join('')+'</div>'
+          +'<div class="plan-grid">'+gridHTML+'</div>'
+        +'</div>'
+      +'</div>'
     +'</div>'
     +'</div>';
 }
