@@ -14,6 +14,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -674,6 +677,7 @@ body.mode-refined #dontknow-kpi-badge{background:rgba(167,139,250,.12) !importan
   </div>
   <div class="header-right">
     <div class="last-updated">Last sync: <span id="sync-time">—</span></div>
+    <div id="fb-status" style="font-size:.6rem;color:var(--muted);white-space:nowrap">⏳ Connecting...</div>
     <button id="mode-toggle-btn" class="mode-btn" onclick="toggleMode()" title="Switch theme mode">✦ Refined</button>
     <button class="sync-btn" onclick="exportJSON()" title="Export all local data as JSON backup" style="background:transparent;border-color:var(--border)">
       ⬇ Export
@@ -1089,6 +1093,115 @@ const ACTIONS = [
   {id:'a4', tier:'high',     icon:'📅', title:'Prepare for 25 May (9 items)',       detail:'Heaviest single day this week — review some items early.'},
   {id:'a5', tier:'medium',   icon:'📊', title:'Finish Topic MSK Slides',            detail:'Presentation due 28/5 (5 days) — currently in progress.'},
 ];
+
+// ════════════════════════════════════════════════════════
+// FIREBASE REALTIME SYNC
+// ════════════════════════════════════════════════════════
+const FB_CONFIG = {
+  apiKey: "AIzaSyAEzGQ7eY94Vs5DeEqIiDbZJ9M6w6vOr4M",
+  authDomain: "study-tracker-ff23f.firebaseapp.com",
+  databaseURL: "https://study-tracker-ff23f-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "study-tracker-ff23f",
+  storageBucket: "study-tracker-ff23f.firebasestorage.app",
+  messagingSenderId: "249873293429",
+  appId: "1:249873293429:web:0d891449d83f7af20c583c"
+};
+
+var _fb = null;        // Firebase database reference
+var _fbReady = false;  // true once connected
+var _fbEcho = false;   // prevents write→listener→write loops
+
+function fbInit(){
+  try {
+    if(!firebase || !firebase.apps) return;
+    if(!firebase.apps.length) firebase.initializeApp(FB_CONFIG);
+    _fb = firebase.database();
+    _fbReady = true;
+    fbListenAll();
+    fbShowStatus('🔗 Syncing...');
+    _fb.ref('.info/connected').on('value', function(snap){
+      fbShowStatus(snap.val() ? '🟢 Synced' : '🔴 Offline');
+    });
+    console.log('Firebase ready');
+  } catch(e){ console.warn('Firebase init failed:', e); }
+}
+
+function fbRef(path){ return _fb && _fb.ref('study_tracker/'+path); }
+
+// ── Write helpers — call these INSTEAD of direct localStorage ──
+function fbSet(path, data){
+  if(!_fbReady || _fbEcho) return;
+  try { fbRef(path).set(data); } catch(e){}
+}
+
+// ── Read all data from Firebase on first connect (bootstrap) ──
+function fbListenAll(){
+  if(!_fbReady) return;
+
+  // V2 items (checkboxes) — most critical
+  fbRef('v2items').on('value', function(snap){
+    if(!snap.exists()) return;
+    _fbEcho = true;
+    try {
+      var data = snap.val() || {};
+      Object.keys(data).forEach(function(dk){
+        var arr = data[dk];
+        if(Array.isArray(arr)){
+          localStorage.setItem('study_dash_v2_'+dk, JSON.stringify(arr));
+        }
+      });
+      if(document.getElementById('tab-planning')?.style.display !== 'none') renderPlanning();
+      if(activeVer&&activeVer()==='v2') renderChecklistV2();
+    } finally { _fbEcho = false; }
+  });
+
+  // History
+  fbRef('history').on('value', function(snap){
+    if(!snap.exists()) return;
+    _fbEcho = true;
+    try {
+      var arr = snap.val();
+      if(Array.isArray(arr)){
+        localStorage.setItem('study_dash_history', JSON.stringify(arr));
+        renderHeatmap();
+        renderStudyConsistency();
+        if(document.getElementById('tab-planning')?.style.display !== 'none') renderPlanning();
+      }
+    } finally { _fbEcho = false; }
+  });
+
+  // Profile
+  fbRef('profile').on('value', function(snap){
+    if(!snap.exists()) return;
+    _fbEcho = true;
+    try {
+      var p = snap.val();
+      if(p) {
+        localStorage.setItem('study_dash_profile', JSON.stringify(p));
+        loadProfile();
+      }
+    } finally { _fbEcho = false; }
+  });
+
+  // TBS (time block positions)
+  fbRef('tbs_starts').on('value', function(snap){
+    if(!snap.exists()) return;
+    _fbEcho = true;
+    try {
+      var s = snap.val();
+      if(s) {
+        localStorage.setItem('study_dash_tbs_starts', JSON.stringify(s));
+        if(document.getElementById('tab-planning')?.style.display !== 'none') renderPlanning();
+      }
+    } finally { _fbEcho = false; }
+  });
+}
+
+// ── Status indicator ──
+function fbShowStatus(msg){
+  var el = document.getElementById('fb-status');
+  if(el) el.textContent = msg;
+}
 
 // ════════════════════════════════════════════════════════
 // LOCALSTORAGE
@@ -2857,7 +2970,10 @@ function snoozePipelineItem(id, days){
 // ═══════════════════════════════════════════
 const HIST_KEY=LS+'history';
 function getHistory(){try{return JSON.parse(localStorage.getItem(HIST_KEY)||'[]');}catch{return[];}}
-function setHistory(arr){localStorage.setItem(HIST_KEY,JSON.stringify(arr));}
+function setHistory(arr){
+  localStorage.setItem(HIST_KEY,JSON.stringify(arr));
+  if(!_fbEcho) fbSet('history', arr);
+}
 function saveDay(){
   const pl=getPipeline();
   if(!pl.length){alert('Add tasks to today\'s pipeline first — check items in Overdue / Due Today, or pick chapters below.');return;}
@@ -3583,7 +3699,11 @@ const V2_SLOTS=[
 ];
 function v2IK(date){return LS+'v2_'+(date||todayKey());}
 function getV2Items(date){try{return JSON.parse(localStorage.getItem(v2IK(date))||'[]');}catch{return[];}}
-function setV2Items(arr,date){localStorage.setItem(v2IK(date||todayKey()),JSON.stringify(arr));}
+function setV2Items(arr,date){
+  var dk=date||todayKey();
+  localStorage.setItem(v2IK(dk),JSON.stringify(arr));
+  if(!_fbEcho) fbSet('v2items/'+dk, arr);
+}
 function v2GetTgt(k){const sl=V2_SLOTS.find(s=>s.key===k);const v=localStorage.getItem(LS+'v2t_'+k);return v!==null?parseInt(v):(sl?.defaultTarget??1);}
 function v2SetTgt(k,v){localStorage.setItem(LS+'v2t_'+k,String(Math.max(0,v)));}
 function v2AdjTgt(k,d){v2SetTgt(k,v2GetTgt(k)+d);renderChecklistV2();if(document.getElementById('tab-planning')?.style.display!=='none')renderPlanning();}
@@ -3591,7 +3711,10 @@ function v2AdjTgt(k,d){v2SetTgt(k,v2GetTgt(k)+d);renderChecklistV2();if(document
 // ── Timeline block drag ──
 const TBS_STARTS_KEY='study_dash_tbs_starts';
 function getTBSStarts(){try{return JSON.parse(localStorage.getItem(TBS_STARTS_KEY))||{};}catch{return {};}}
-function setTBSStarts(s){localStorage.setItem(TBS_STARTS_KEY,JSON.stringify(s));}
+function setTBSStarts(s){
+  localStorage.setItem(TBS_STARTS_KEY,JSON.stringify(s));
+  if(!_fbEcho) fbSet('tbs_starts', s);
+}
 window._tl2Drag=null;
 function tlDragStart(e,blockId,initMin,wMin){
   e.preventDefault();e.stopPropagation();
@@ -4244,6 +4367,7 @@ function saveProfile(){
   p.title=document.getElementById('profile-title-input').value.trim()||'Study Tracker';
   p.gameplan=document.getElementById('profile-gameplan-input').value;
   localStorage.setItem(PROF_KEY,JSON.stringify(p));
+  if(!_fbEcho) fbSet('profile', p);
   loadProfile();
   closeProfileModal();
 }
@@ -4299,6 +4423,7 @@ if('serviceWorker' in navigator && location.protocol !== 'file:'){
 window.onload = () => {
   loadProfile();
   initMode();
+  fbInit();
   render();
   buildCharts();
   autoSaveDayIfNeeded(); // catch missed saves from page being closed overnight
