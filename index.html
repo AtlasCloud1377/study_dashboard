@@ -389,9 +389,9 @@ body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color
 .slot-label{font-size:.76rem;font-weight:700;flex:1;}
 .slot-progress{font-size:.63rem;font-weight:600;color:var(--muted);white-space:nowrap;}
 .slot-progress.sp-done{color:var(--green);}
-.slot-item{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);}
+.slot-item{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);touch-action:manipulation;-webkit-tap-highlight-color:transparent;user-select:none;}
 .slot-item:last-child{border-bottom:none;}
-.slot-cb{width:18px;height:18px;border-radius:5px;border:2px solid var(--border-lt);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.6rem;cursor:pointer;transition:.15s;}
+.slot-cb{width:18px;height:18px;border-radius:5px;border:2px solid var(--border-lt);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.6rem;cursor:pointer;transition:.15s;touch-action:manipulation;-webkit-tap-highlight-color:transparent;user-select:none;}
 .slot-cb.done{background:var(--green);border-color:var(--green);color:#000;}
 .slot-item-name{font-size:.72rem;flex:1;min-width:0;overflow:hidden;display:flex;flex-direction:column;gap:1px;}
 .slot-item-name.done .slot-item-main{text-decoration:line-through;color:var(--dim);}
@@ -499,7 +499,7 @@ body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color
 .plan-cal-inner{min-width:0;}
 /* Mobile vertical list view */
 .plan-list-view{display:flex;flex-direction:column;gap:2px;}
-.plan-list-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;border:1px solid transparent;cursor:pointer;transition:background .15s,border-color .15s;min-height:52px;}
+.plan-list-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;border:1px solid transparent;cursor:pointer;transition:background .15s,border-color .15s;min-height:52px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;}
 .plan-list-row.plan-today{border-color:var(--accent);border-width:2px;background:rgba(56,189,248,.04);}
 .plan-list-row.plan-past{opacity:.82;}
 .plan-list-row.plan-open{background:rgba(56,189,248,.08);border-color:var(--accent);}
@@ -1174,19 +1174,31 @@ function fbListenAll(){
   if(!_fbReady) return;
 
   // V2 items (checkboxes) — most critical
+  // Only re-render when data actually changed from a REMOTE device.
+  // If this device wrote it, localStorage already matches Firebase — skip the re-render
+  // so iOS doesn't lose the tap mid-gesture.
   fbRef('v2items').on('value', function(snap){
     if(!snap.exists()) return;
     _fbEcho = true;
     try {
       var data = snap.val() || {};
+      var remoteChanged = false;
       Object.keys(data).forEach(function(dk){
         var arr = data[dk];
         if(Array.isArray(arr)){
-          localStorage.setItem('study_dash_v2_'+dk, JSON.stringify(arr));
+          var existing = localStorage.getItem('study_dash_v2_'+dk);
+          var incoming = JSON.stringify(arr);
+          if(existing !== incoming){
+            localStorage.setItem('study_dash_v2_'+dk, incoming);
+            remoteChanged = true;
+          }
         }
       });
-      if(document.getElementById('tab-planning')?.style.display !== 'none') renderPlanning();
-      if(activeVer&&activeVer()==='v2') renderChecklistV2();
+      // Only re-render if a remote device changed something
+      if(remoteChanged){
+        if(document.getElementById('tab-planning')?.style.display !== 'none')
+          setTimeout(renderPlanning, 50);
+      }
     } finally { _fbEcho = false; }
   });
 
@@ -1723,7 +1735,8 @@ function _planRefreshV2IfNeeded(dk){ /* checklist tab removed — no-op */ }
 function v2ToggleItemForDate(id,dk){
   const arr=getV2Items(dk);const it=arr.find(function(x){return x.id===id;});
   if(!it)return;it.done=!it.done;setV2Items(arr,dk);
-  _planRefreshV2IfNeeded(dk);renderPlanning();
+  _planRefreshV2IfNeeded(dk);
+  renderPlanning();
 }
 function v2RemoveItemForDate(id,dk){
   setV2Items(getV2Items(dk).filter(function(x){return x.id!==id;}),dk);
@@ -1755,10 +1768,11 @@ function _planDaySlotCard(sl, dk, items, blocks){
       +'<span class="slot-item-main">'+it.name+'</span>'
       +(showSub?'<span class="slot-item-sub">'+it.sub+'</span>':'')
       +'</span>';
-    return '<div class="slot-item">'
-      +'<div class="slot-cb'+(it.done?' done':'')+'" onclick="v2ToggleItemForDate(\''+it.id+'\',\''+dk+'\')">✓</div>'
-      +nameHTML+blkBadge
-      +'<button class="slot-rm" onclick="v2RemoveItemForDate(\''+it.id+'\',\''+dk+'\')" title="Remove">×</button>'
+    return '<div class="slot-item" onclick="v2ToggleItemForDate(\''+it.id+'\',\''+dk+'\')" style="cursor:pointer">'
+      +'<div class="slot-cb'+(it.done?' done':'')+'">✓</div>'
+      +nameHTML
+      +'<span onclick="v2CycleBlockForDate(\''+it.id+'\',\''+dk+'\');event.stopPropagation()" class="slot-blk" style="color:'+(blk?blk.color:'var(--dim)')+';border-color:'+(blk?blk.color:'var(--border)')+'" title="'+(blk?'Click to change':'Assign block')+'">'+(blk?blk.label:'+block')+'</span>'
+      +'<button class="slot-rm" onclick="v2RemoveItemForDate(\''+it.id+'\',\''+dk+'\');event.stopPropagation()" title="Remove">×</button>'
       +'</div>';
   }).join('');
 
