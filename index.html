@@ -385,13 +385,13 @@ body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color
 .ver-btn{padding:5px 16px;border-radius:99px;border:none;font-size:.7rem;font-weight:600;cursor:pointer;transition:.15s;background:transparent;color:var(--muted);}
 .ver-btn.v-active{background:var(--accent);color:#000;}
 /* ── V2 Slot Cards ── */
-.slot-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;margin-bottom:10px;border-left:3px solid var(--accent);}
+.slot-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;margin-bottom:10px;border-left:3px solid var(--accent);min-width:0;overflow:hidden;}
 .slot-hdr{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
 .slot-icon{font-size:.88rem;}
 .slot-label{font-size:.76rem;font-weight:700;flex:1;}
 .slot-progress{font-size:.63rem;font-weight:600;color:var(--muted);white-space:nowrap;}
 .slot-progress.sp-done{color:var(--green);}
-.slot-item{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);}
+.slot-item{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);min-width:0;}
 .slot-item:last-child{border-bottom:none;}
 .slot-cb{width:18px;height:18px;border-radius:5px;border:2px solid var(--border-lt);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.6rem;cursor:pointer;transition:.15s;}
 .slot-cb.done{background:var(--green);border-color:var(--green);color:#000;}
@@ -562,7 +562,7 @@ body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color
 .plan-exp-swipe-hint{display:none;font-size:.58rem;color:var(--dim);text-align:center;margin-bottom:8px;letter-spacing:.04em;}
 @media(max-width:640px){.plan-exp-swipe-hint{display:block;}}
 /* Slot grid inside expansion */
-.plan-day-slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px;}
+.plan-day-slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px;min-width:0;}
 /* ══════════════════════════════════════════════════════
    RESPONSIVE — iPad & iPhone
    ══════════════════════════════════════════════════════ */
