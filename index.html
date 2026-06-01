@@ -1174,31 +1174,19 @@ function fbListenAll(){
   if(!_fbReady) return;
 
   // V2 items (checkboxes) — most critical
-  // Only re-render when data actually changed from a REMOTE device.
-  // If this device wrote it, localStorage already matches Firebase — skip the re-render
-  // so iOS doesn't lose the tap mid-gesture.
   fbRef('v2items').on('value', function(snap){
     if(!snap.exists()) return;
     _fbEcho = true;
     try {
       var data = snap.val() || {};
-      var remoteChanged = false;
       Object.keys(data).forEach(function(dk){
         var arr = data[dk];
         if(Array.isArray(arr)){
-          var existing = localStorage.getItem('study_dash_v2_'+dk);
-          var incoming = JSON.stringify(arr);
-          if(existing !== incoming){
-            localStorage.setItem('study_dash_v2_'+dk, incoming);
-            remoteChanged = true;
-          }
+          localStorage.setItem('study_dash_v2_'+dk, JSON.stringify(arr));
         }
       });
-      // Only re-render if a remote device changed something
-      if(remoteChanged){
-        if(document.getElementById('tab-planning')?.style.display !== 'none')
-          setTimeout(renderPlanning, 50);
-      }
+      if(document.getElementById('tab-planning')?.style.display !== 'none') renderPlanning();
+      if(activeVer&&activeVer()==='v2') renderChecklistV2();
     } finally { _fbEcho = false; }
   });
 
@@ -1768,10 +1756,10 @@ function _planDaySlotCard(sl, dk, items, blocks){
       +'<span class="slot-item-main">'+it.name+'</span>'
       +(showSub?'<span class="slot-item-sub">'+it.sub+'</span>':'')
       +'</span>';
-    return '<div class="slot-item" onclick="v2ToggleItemForDate(\''+it.id+'\',\''+dk+'\')" style="cursor:pointer">'
+    return '<div class="slot-item" ontouchstart="" onclick="v2ToggleItemForDate(\''+it.id+'\',\''+dk+'\')" style="cursor:pointer">'
       +'<div class="slot-cb'+(it.done?' done':'')+'">✓</div>'
       +nameHTML
-      +'<span onclick="v2CycleBlockForDate(\''+it.id+'\',\''+dk+'\');event.stopPropagation()" class="slot-blk" style="color:'+(blk?blk.color:'var(--dim)')+';border-color:'+(blk?blk.color:'var(--border)')+'" title="'+(blk?'Click to change':'Assign block')+'">'+(blk?blk.label:'+block')+'</span>'
+      +'<span ontouchstart="" onclick="v2CycleBlockForDate(\''+it.id+'\',\''+dk+'\');event.stopPropagation()" class="slot-blk" style="color:'+(blk?blk.color:'var(--dim)')+';border-color:'+(blk?blk.color:'var(--border)')+'" title="'+(blk?'Click to change':'Assign block')+'">'+(blk?blk.label:'+block')+'</span>'
       +'<button class="slot-rm" onclick="v2RemoveItemForDate(\''+it.id+'\',\''+dk+'\');event.stopPropagation()" title="Remove">×</button>'
       +'</div>';
   }).join('');
@@ -2236,7 +2224,7 @@ function renderPlanning() {
         dd.isToday ? 'plan-today' : '',
         dd.isPast  ? 'plan-past'  : ''
       ].filter(Boolean).join(' ');
-      listHTML += '<div class="'+cls+'" onclick="planToggleDay(\''+dd.dk+'\')">'
+      listHTML += '<div class="'+cls+'" ontouchstart="" onclick="planToggleDay(\''+dd.dk+'\')">'
         +'<div class="plan-list-date">'
           +'<div class="plan-list-dayname">'+dayAbbr+'</div>'
           +'<div class="plan-list-daynum">'+dd.d+'</div>'
