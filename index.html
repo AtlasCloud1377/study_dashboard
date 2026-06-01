@@ -533,6 +533,8 @@ body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color
 .plan-exp-hdr-prog{font-size:.62rem;color:var(--muted);}
 .plan-exp-close{margin-left:auto;background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;padding:2px 6px;border-radius:5px;transition:.12s;}
 .plan-exp-close:hover{background:var(--card-hov);color:var(--text);}
+.plan-exp-swipe-hint{display:none;font-size:.58rem;color:var(--dim);text-align:center;margin-bottom:8px;letter-spacing:.04em;}
+@media(max-width:640px){.plan-exp-swipe-hint{display:block;}}
 /* Slot grid inside expansion */
 .plan-day-slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px;}
 /* ══════════════════════════════════════════════════════
@@ -548,6 +550,9 @@ body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color
 
 /* ── iPhone (≤ 640px) ── */
 @media(max-width:640px){
+  /* Prevent iOS Safari auto-zoom on input focus (requires font-size >= 16px) */
+  input, textarea, select { font-size: 16px !important; }
+
   /* Page — push content below Dynamic Island + above home bar */
   .page{padding:env(safe-area-inset-top) 12px calc(76px + env(safe-area-inset-bottom)) !important;}
 
@@ -1781,7 +1786,9 @@ function _planDayV2HTML(dk){
     +'</div>'
     :'';
 
-  return '<div class="plan-exp">'
+  return '<div class="plan-exp" id="plan-exp-panel">'
+    // Mobile swipe hint pill
+    +'<div class="plan-exp-swipe-hint">← swipe to close</div>'
     +'<div class="plan-exp-hdr">'
       +'<span style="font-size:.9rem">'+modeEmoji+'</span>'
       +'<span class="plan-exp-hdr-label" style="color:'+modeColor+'">'+label+'</span>'
@@ -1883,6 +1890,24 @@ document.addEventListener('click',  function(e){
   if(!e.target.closest('#plan-cell-tooltip')) hideCellTip();
 }, true);
 
+// ── Swipe right to close expansion panel (mobile) ──
+var _swipeStartX = 0, _swipeStartY = 0;
+document.addEventListener('touchstart', function(e){
+  if(e.target.closest('#plan-exp-panel')){
+    _swipeStartX = e.touches[0].clientX;
+    _swipeStartY = e.touches[0].clientY;
+  }
+}, {passive: true});
+document.addEventListener('touchend', function(e){
+  if(!e.target.closest('#plan-exp-panel') || !_planOpenDk) return;
+  var dx = e.changedTouches[0].clientX - _swipeStartX;
+  var dy = e.changedTouches[0].clientY - _swipeStartY;
+  // Right swipe: dx > 70px and clearly horizontal (dx > 2× vertical)
+  if(dx > 70 && Math.abs(dx) > Math.abs(dy) * 2){
+    planToggleDay(_planOpenDk);
+  }
+}, {passive: true});
+
 function planResetToday(){
   if(!confirm('Reset today\'s tasks? This clears all manually added items. Synced items will remain.')) return;
   const tk=todayKey();
@@ -1895,6 +1920,19 @@ function planResetToday(){
 function planToggleDay(dk) {
   _planOpenDk = (_planOpenDk === dk) ? null : dk;
   renderPlanning();
+  // On mobile: scroll expansion panel into view below sticky header
+  if(_planOpenDk && window.innerWidth <= 640){
+    setTimeout(function(){
+      var exp = document.querySelector('.plan-exp');
+      if(!exp) return;
+      var header = document.querySelector('.header');
+      var headerH = header ? header.offsetHeight : 60;
+      var safeTop = parseFloat(getComputedStyle(document.documentElement).paddingTop) || 0;
+      var offset = headerH + safeTop + 12;
+      var expTop = exp.getBoundingClientRect().top + window.scrollY - offset;
+      window.scrollTo({ top: expTop, behavior: 'smooth' });
+    }, 80);
+  }
 }
 
 function renderPlanning() {
