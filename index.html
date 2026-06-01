@@ -637,6 +637,8 @@ body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color
   .plan-cal-inner{min-width:420px;}
   /* Day expansion — scroll margin clears Dynamic Island + header */
   .plan-exp{scroll-margin-top:calc(env(safe-area-inset-top) + 80px);}
+  /* Bigger checkbox tap target on mobile */
+  .slot-cb{width:32px !important;height:32px !important;font-size:.85rem !important;border-radius:8px !important;border-width:2px !important;}
   /* Day expansion — full width slots */
   .plan-day-slots{grid-template-columns:1fr !important;}
   .plan-exp{padding:12px 10px 10px;}
@@ -1756,11 +1758,10 @@ function _planDaySlotCard(sl, dk, items, blocks){
       +'<span class="slot-item-main">'+it.name+'</span>'
       +(showSub?'<span class="slot-item-sub">'+it.sub+'</span>':'')
       +'</span>';
-    return '<div class="slot-item" ontouchstart="" onclick="v2ToggleItemForDate(\''+it.id+'\',\''+dk+'\')" style="cursor:pointer">'
-      +'<div class="slot-cb'+(it.done?' done':'')+'">✓</div>'
-      +nameHTML
-      +'<span ontouchstart="" onclick="v2CycleBlockForDate(\''+it.id+'\',\''+dk+'\');event.stopPropagation()" class="slot-blk" style="color:'+(blk?blk.color:'var(--dim)')+';border-color:'+(blk?blk.color:'var(--border)')+'" title="'+(blk?'Click to change':'Assign block')+'">'+(blk?blk.label:'+block')+'</span>'
-      +'<button class="slot-rm" onclick="v2RemoveItemForDate(\''+it.id+'\',\''+dk+'\');event.stopPropagation()" title="Remove">×</button>'
+    return '<div class="slot-item">'
+      +'<div class="slot-cb'+(it.done?' done':'')+'" onclick="v2ToggleItemForDate(\''+it.id+'\',\''+dk+'\')">✓</div>'
+      +nameHTML+blkBadge
+      +'<button class="slot-rm" onclick="v2RemoveItemForDate(\''+it.id+'\',\''+dk+'\')" title="Remove">×</button>'
       +'</div>';
   }).join('');
 
@@ -2130,7 +2131,7 @@ function renderPlanning() {
 
       const tipAttr = dd.n > 0 ? ' data-tipdk="'+dd.dk+'"' : '';
 
-      gridHTML += '<div class="'+cls+'"'+tipAttr+' ontouchstart="" onclick="planToggleDay(\''+dd.dk+'\')">'
+      gridHTML += '<div class="'+cls+'"'+tipAttr+' onclick="planToggleDay(\''+dd.dk+'\')">'
         +'<div class="plan-cell-hdr">'
           +'<span class="plan-cell-day">'+dd.d+'</span>'
           +(dd.n > 0 ? '<span class="plan-cell-badge" style="color:'+badgeColor+';background:'+badgeBg+'">'+dd.n+'</span>' : '')
@@ -2224,7 +2225,7 @@ function renderPlanning() {
         dd.isToday ? 'plan-today' : '',
         dd.isPast  ? 'plan-past'  : ''
       ].filter(Boolean).join(' ');
-      listHTML += '<div class="'+cls+'" ontouchstart="" onclick="planToggleDay(\''+dd.dk+'\')">'
+      listHTML += '<div class="'+cls+'" onclick="planToggleDay(\''+dd.dk+'\')">'
         +'<div class="plan-list-date">'
           +'<div class="plan-list-dayname">'+dayAbbr+'</div>'
           +'<div class="plan-list-daynum">'+dd.d+'</div>'
