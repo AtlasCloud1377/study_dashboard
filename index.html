@@ -488,6 +488,26 @@ body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color
 .plan-exp-close:hover{background:var(--card-hov);color:var(--text);}
 /* Slot grid inside expansion */
 .plan-day-slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px;}
+/* ── Mode: Refined ── */
+/* Dashboard top layout: KPI (left) + Heatmap (right) */
+body.mode-refined #top-section-wrap{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start;margin-bottom:12px;}
+body.mode-refined .kpi-row{margin-bottom:0;}
+body.mode-refined #heatmap-top-slot{display:block !important;}
+body.mode-refined #heatmap-bottom-card{display:none;}
+/* 1. Larger cell item text */
+body.mode-refined .plan-cell-item{font-size:.63rem;}
+body.mode-refined .plan-cell-more{font-size:.58rem;}
+/* 3. Active-days stat — same size as other stats */
+body.mode-refined .plan-sb-active-val{font-size:1.65rem !important;color:var(--muted);}
+/* 5. Reset button visual separation */
+body.mode-refined .plan-reset-sep{border-left:1px solid var(--border);padding-left:12px;margin-left:4px;}
+/* 8. Don't Know → purple */
+body.mode-refined #dontknow-kpi-card{border-top-color:var(--purple) !important;}
+body.mode-refined #k-dontknow{color:var(--purple) !important;}
+body.mode-refined #dontknow-kpi-badge{background:rgba(167,139,250,.12) !important;border-color:var(--purple) !important;color:var(--purple) !important;}
+/* Mode toggle button */
+.mode-btn{display:flex;align-items:center;gap:6px;font-size:.7rem;font-weight:600;padding:6px 15px;border-radius:99px;border:1px solid var(--border-lt);background:var(--card);color:var(--muted);cursor:pointer;transition:all .15s;font-family:inherit;}
+.mode-btn:hover{background:var(--card-hov);border-color:var(--accent);color:var(--accent);}
 </style>
 </head>
 <body>
@@ -504,6 +524,7 @@ body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color
   </div>
   <div class="header-right">
     <div class="last-updated">Last sync: <span id="sync-time">—</span></div>
+    <button id="mode-toggle-btn" class="mode-btn" onclick="toggleMode()" title="Switch theme mode">✦ Refined</button>
     <button class="sync-btn" onclick="exportJSON()" title="Export all local data as JSON backup" style="background:transparent;border-color:var(--border)">
       ⬇ Export
     </button>
@@ -522,6 +543,7 @@ body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color
 <div id="tab-dashboard">
 
 <!-- ── KPI Row ── -->
+<div id="top-section-wrap">
 <div class="kpi-row">
 
   <div class="card-btn" onclick="openPanel('overdue')" style="border-top:2px solid var(--red)">
@@ -572,15 +594,23 @@ body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color
     <div class="kpi-sub" style="margin-top:6px">tap to see schedule</div>
   </div>
 
-  <div class="card-btn" onclick="openPanel('dontknow')" style="border-top:2px solid var(--orange)">
+  <div id="dontknow-kpi-card" class="card-btn" onclick="openPanel('dontknow')" style="border-top:2px solid var(--orange)">
     <div class="ct">Don't Know Topics <span class="ct-icon">❓</span></div>
     <div class="kpi-val c-orange" id="k-dontknow">7</div>
     <div class="kpi-label">topics flagged for review</div>
-    <div class="kpi-badge bg-orange" style="margin-top:8px">🟠 Focus here</div>
+    <div id="dontknow-kpi-badge" class="kpi-badge bg-orange" style="margin-top:8px">🔮 Focus here</div>
     <div class="kpi-sub" style="margin-top:6px">tap to see topics</div>
   </div>
 
+</div><!-- /kpi-row -->
+
+<!-- Top heatmap slot (refined mode only) -->
+<div id="heatmap-top-slot" class="card" style="border-top:2px solid var(--green);display:none">
+  <div class="ct">Study Activity 🟩 <span id="heatmap-top-hint" class="ct-hint"></span></div>
+  <div id="study-heatmap-top" style="min-height:90px"></div>
 </div>
+
+</div><!-- /top-section-wrap -->
 
 <!-- ── Main Row: Chart | Donut | Active Work ── -->
 <div class="g-three">
@@ -646,13 +676,13 @@ body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color
 </div>
 
 
-<!-- ── Study Activity Heatmap ── -->
-<div class="card" style="border-top:2px solid var(--green);margin-bottom:12px">
+<!-- ── Study Activity Heatmap (classic position) ── -->
+<div id="heatmap-bottom-card" class="card" style="border-top:2px solid var(--green);margin-bottom:12px">
   <div class="ct">Study Activity 🟩
-    <span class="ct-hint">last 18 weeks · from saved days</span>
+    <span id="heatmap-bottom-hint" class="ct-hint"></span>
   </div>
   <div id="study-heatmap" style="min-height:90px;display:flex;align-items:center">
-    <div style="font-size:.7rem;color:var(--dim)">Save days in the Daily &amp; Pipeline tab to see your activity heatmap.</div>
+    <div style="font-size:.7rem;color:var(--dim)">Save a day to see your activity heatmap.</div>
   </div>
 </div>
 
@@ -1404,7 +1434,10 @@ function _planDayV2HTML(dk){
   const dt=new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2]));
   const DAY_NAMES=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   const MONTH_NAMES=['January','February','March','April','May','June','July','August','September','October','November','December'];
-  const label=DAY_NAMES[dt.getDay()]+', '+MONTH_NAMES[dt.getMonth()]+' '+dt.getDate()+' '+dt.getFullYear();
+  // #4 refined: shorter date — "Thu, 4 Jun 2026" vs "Thursday, June 4 2026"
+  const label=isRefinedMode()
+    ? DAY_NAMES[dt.getDay()].slice(0,3)+', '+dt.getDate()+' '+MONTH_NAMES[dt.getMonth()].slice(0,3)+' '+dt.getFullYear()
+    : DAY_NAMES[dt.getDay()]+', '+MONTH_NAMES[dt.getMonth()]+' '+dt.getDate()+' '+dt.getFullYear();
 
   const todayStr=_planTodayStr();
   const isPast=dk<todayStr, isToday=dk===todayStr;
@@ -1525,14 +1558,26 @@ function renderPlanning() {
     });
   });
 
+  const refined = isRefinedMode();
+
   // ── Sidebar ──
+  // #3 refined: active days same size as other stats
+  const activeDaysValHTML = refined
+    ? '<div class="plan-sb-val plan-sb-active-val">'+activeDays+'<span style="font-size:.7rem;font-weight:500;color:var(--dim)"> / '+daysInMonth+'</span></div>'
+    : '<div class="plan-sb-val" style="font-size:1.1rem;color:var(--muted)">'+activeDays+'<span style="font-size:.7rem;font-weight:500;color:var(--dim)"> / '+daysInMonth+'</span></div>';
+
+  // #7 refined: always show all slots (even at 0)
+  const slotFilterFn = refined
+    ? function(){ return true; }
+    : function(sl){ return slotTotals[sl.key]>0; };
+
   const sidebarHTML = '<div class="plan-sidebar">'
     +'<div class="plan-sb-title">'+MONTH_NAMES[month]+' '+year+'</div>'
     +'<div class="plan-sb-stat"><div class="plan-sb-val c-blue">'+totalPlanned+'</div><div class="plan-sb-lbl">items planned</div></div>'
     +'<div class="plan-sb-stat"><div class="plan-sb-val c-green">'+totalDone+'</div><div class="plan-sb-lbl">done so far</div></div>'
     +'<div class="plan-sb-stat"><div class="plan-sb-val '+(totalRemaining>0?'c-amber':'c-green')+'">'+totalRemaining+'</div><div class="plan-sb-lbl">remaining</div></div>'
     +'<div class="plan-sb-stat" style="border-bottom:none;padding-bottom:0">'
-      +'<div class="plan-sb-val" style="font-size:1.1rem;color:var(--muted)">'+activeDays+'<span style="font-size:.7rem;font-weight:500;color:var(--dim)"> / '+daysInMonth+'</span></div>'
+      +activeDaysValHTML
       +'<div class="plan-sb-lbl">active days</div>'
     +'</div>'
     +'<div class="plan-sb-prog">'
@@ -1541,7 +1586,7 @@ function renderPlanning() {
     +'</div>'
     +'<hr class="plan-sb-divider">'
     +'<div class="plan-sb-title">By slot</div>'
-    +V2_SLOTS.filter(function(sl){ return slotTotals[sl.key]>0; }).map(function(sl){
+    +V2_SLOTS.filter(slotFilterFn).map(function(sl){
       return '<div class="plan-sb-slot-row">'
         +'<span class="plan-sb-slot-icon">'+sl.icon+'</span>'
         +'<span class="plan-sb-slot-name" style="color:'+sl.color+'">'+sl.label+'</span>'
@@ -1634,6 +1679,22 @@ function renderPlanning() {
   const now2 = new Date();
   const todayLabel = now2.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
 
+  // #6 refined: show dim placeholder bar when no tasks
+  const progressSection = todayTotal>0
+    ? '<div><div style="font-size:.6rem;color:var(--muted);margin-bottom:4px;text-align:right">'+todayDone+' / '+todayTotal+' tasks · '+todayPct+'%</div>'
+      +'<div class="v2-pbar" style="width:150px"><div class="v2-pfill" style="width:'+todayPct+'%;background:'+todayScoreCol+'"></div></div></div>'
+    : refined
+      ? '<div><div style="font-size:.6rem;color:var(--dim);margin-bottom:4px;text-align:right">No tasks today</div>'
+        +'<div class="v2-pbar" style="width:150px;opacity:.25"><div class="v2-pfill" style="width:0%"></div></div></div>'
+      : '<span style="font-size:.65rem;color:var(--dim)">No tasks planned today</span>';
+
+  // #5 refined: wrap reset in a separator span
+  const resetBtn = '<button onclick="planResetToday()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--border-lt);background:transparent;color:var(--muted);font-size:.72rem;cursor:pointer;font-weight:600;font-family:inherit;transition:.15s" onmouseover="this.style.borderColor=\'var(--red)\';this.style.color=\'var(--red)\'" onmouseout="this.style.borderColor=\'var(--border-lt)\';this.style.color=\'var(--muted)\'">↺ Reset</button>';
+  const resetSection = refined ? '<span class="plan-reset-sep">'+resetBtn+'</span>' : resetBtn;
+
+  // #2 refined: remove TIME BLOCKS label
+  const tbLabel = refined ? '' : '<div style="font-size:.6rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Time Blocks</div>';
+
   const topStripHTML =
     '<div class="card" style="border-top:2px solid var(--accent);margin-bottom:14px">'
       +'<div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px">'
@@ -1642,15 +1703,12 @@ function renderPlanning() {
           +'<div style="font-size:.7rem;color:var(--muted);margin-top:3px"><span id="plan-reset-cd" style="color:'+rc.color+'">'+rc.text+'</span></div>'
         +'</div>'
         +'<div style="display:flex;align-items:center;gap:12px">'
-          +(todayTotal>0
-            ? '<div><div style="font-size:.6rem;color:var(--muted);margin-bottom:4px;text-align:right">'+todayDone+' / '+todayTotal+' tasks · '+todayPct+'%</div>'
-              +'<div class="v2-pbar" style="width:150px"><div class="v2-pfill" style="width:'+todayPct+'%;background:'+todayScoreCol+'"></div></div></div>'
-            : '<span style="font-size:.65rem;color:var(--dim)">No tasks planned today</span>')
+          +progressSection
           +'<button class="save-day-btn" style="width:auto;padding:8px 18px;font-size:.72rem" onclick="v2SaveDay()">💾 Save Day</button>'
-        +'<button onclick="planResetToday()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--border-lt);background:transparent;color:var(--muted);font-size:.72rem;cursor:pointer;font-weight:600;font-family:inherit;transition:.15s" onmouseover="this.style.borderColor=\'var(--red)\';this.style.color=\'var(--red)\'" onmouseout="this.style.borderColor=\'var(--border-lt)\';this.style.color=\'var(--muted)\'">↺ Reset</button>'
+          +resetSection
         +'</div>'
       +'</div>'
-      +'<div style="font-size:.6rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Time Blocks</div>'
+      +tbLabel
       +buildBlocksHTML(todayItems)
     +'</div>';
 
@@ -3014,11 +3072,17 @@ function renderChecklist() {
 // ANKI HEATMAP
 // ════════════════════════════════════════════════════════
 function renderHeatmap(){
-  const el=document.getElementById('study-heatmap');if(!el)return;
+  const refined=isRefinedMode();
+  const el=document.getElementById(refined?'study-heatmap-top':'study-heatmap');if(!el)return;
+  // Update label in whichever card is active
+  const yr=new Date().getFullYear();
+  const hintId=refined?'heatmap-top-hint':'heatmap-bottom-hint';
+  const hintEl=document.getElementById(hintId);
+  if(hintEl) hintEl.textContent=yr+' · from saved days';
   const hist=getHistory();
   const hMap={};hist.forEach(function(h){hMap[h.date]=h;});
   const today=new Date();today.setHours(0,0,0,0);
-  const CELL=11,GAP=2,COL=13; // COL=CELL+GAP
+  const CELL=refined?9:11,GAP=2,COL=CELL+GAP;
   const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const DAY_LABELS=['M','','W','','F','',''];
   const TC_INFO={today:{label:'Due Today',icon:'📬'},overdue:{label:'Overdue',icon:'⚠️'},book:{label:'Book Chapters',icon:'📖'},paper:{label:'Papers',icon:'📄'},dontknow:{label:"Don't Know",icon:'❓'},freshness:{label:'Modality',icon:'🧠'},active:{label:'Active Work',icon:'🎯'}};
@@ -3803,7 +3867,32 @@ function _showAutoSaveToast(dateStr, done, total){
   }, 5000);
 }
 
+// ════════════════════════════════════════════════════════
+// THEME MODE — Classic (default) vs Refined
+// ════════════════════════════════════════════════════════
+const MODE_KEY = LS+'theme_mode';
+function isRefinedMode(){ return document.body.classList.contains('mode-refined'); }
+function toggleMode(){
+  const refined = !isRefinedMode();
+  document.body.classList.toggle('mode-refined', refined);
+  localStorage.setItem(MODE_KEY, refined ? 'refined' : 'classic');
+  const btn = document.getElementById('mode-toggle-btn');
+  if(btn) btn.textContent = refined ? '↩ Classic' : '✦ Refined';
+  // Re-render heatmap into the correct slot for this mode
+  renderHeatmap();
+  if(document.getElementById('tab-planning')?.style.display !== 'none') renderPlanning();
+}
+function initMode(){
+  const saved = localStorage.getItem(MODE_KEY);
+  if(saved === 'refined'){
+    document.body.classList.add('mode-refined');
+    const btn = document.getElementById('mode-toggle-btn');
+    if(btn) btn.textContent = '↩ Classic';
+  }
+}
+
 window.onload = () => {
+  initMode();
   render();
   buildCharts();
   autoSaveDayIfNeeded(); // catch missed saves from page being closed overnight
