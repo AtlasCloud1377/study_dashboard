@@ -493,13 +493,14 @@ body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color
 .plan-sb-slot-name{flex:1;color:var(--muted);margin:0 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .plan-sb-slot-n{font-weight:700;color:var(--text);}
 /* Calendar panel */
-.plan-cal{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px 14px;}
+.plan-cal{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px 14px;width:100%;overflow:hidden;box-sizing:border-box;min-width:0;}
 .plan-cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
 .plan-cal-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
 .plan-cal-inner{min-width:0;}
 /* Mobile vertical list view */
-.plan-list-view{display:flex;flex-direction:column;gap:2px;}
-.plan-list-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;border:1px solid transparent;cursor:pointer;transition:background .15s,border-color .15s;min-height:52px;}
+.plan-list-view{display:flex;flex-direction:column;gap:2px;width:100%;overflow:hidden;}
+.plan-list-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;border:1px solid transparent;cursor:pointer;transition:background .15s,border-color .15s;min-height:52px;min-width:0;overflow:hidden;}
+.plan-list-content{flex:1;min-width:0;overflow:hidden;}
 .plan-list-row.plan-today{border-color:var(--accent);border-width:2px;background:rgba(56,189,248,.04);}
 .plan-list-row.plan-past{opacity:.82;}
 .plan-list-row.plan-open{background:rgba(56,189,248,.08);border-color:var(--accent);}
@@ -1749,17 +1750,18 @@ function _planDaySlotCard(sl, dk, items, blocks){
   const itemsHTML=slItems.map(function(it){
     const blk=it.blockId?blocks.find(function(b){return b.id===it.blockId;}):null;
     const blkBadge=blk
-      ?'<span class="slot-blk" style="color:'+blk.color+';border-color:'+blk.color+'" onclick="v2CycleBlockForDate(\''+it.id+'\',\''+dk+'\')" title="Click to change">'+blk.label+'</span>'
-      :'<span class="slot-blk" style="color:var(--dim);border-color:var(--border)" onclick="v2CycleBlockForDate(\''+it.id+'\',\''+dk+'\')" title="Assign block">+block</span>';
+      ?'<span class="slot-blk" style="color:'+blk.color+';border-color:'+blk.color+'" onclick="v2CycleBlockForDate(\''+it.id+'\',\''+dk+'\');event.stopPropagation()" title="Click to change">'+blk.label+'</span>'
+      :'<span class="slot-blk" style="color:var(--dim);border-color:var(--border)" onclick="v2CycleBlockForDate(\''+it.id+'\',\''+dk+'\');event.stopPropagation()" title="Assign block">+block</span>';
     const showSub=it.sub&&(it.slotKey==='book'||it.slotKey==='paper');
     const nameHTML='<span class="slot-item-name'+(it.done?' done':'')+'">'
       +'<span class="slot-item-main">'+it.name+'</span>'
       +(showSub?'<span class="slot-item-sub">'+it.sub+'</span>':'')
       +'</span>';
-    return '<div class="slot-item">'
-      +'<div class="slot-cb'+(it.done?' done':'')+'" onclick="v2ToggleItemForDate(\''+it.id+'\',\''+dk+'\')">✓</div>'
+    // Whole row is the tap target — cursor:pointer makes iOS fire on first tap
+    return '<div class="slot-item" onclick="v2ToggleItemForDate(\''+it.id+'\',\''+dk+'\')" style="cursor:pointer">'
+      +'<div class="slot-cb'+(it.done?' done':'')+'">✓</div>'
       +nameHTML+blkBadge
-      +'<button class="slot-rm" onclick="v2RemoveItemForDate(\''+it.id+'\',\''+dk+'\')" title="Remove">×</button>'
+      +'<button class="slot-rm" onclick="v2RemoveItemForDate(\''+it.id+'\',\''+dk+'\');event.stopPropagation()" title="Remove">×</button>'
       +'</div>';
   }).join('');
 
