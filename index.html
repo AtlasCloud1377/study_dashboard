@@ -768,7 +768,7 @@ body.mode-refined #dontknow-kpi-badge{background:rgba(167,139,250,.12) !importan
 <div id="top-section-wrap">
 <div class="kpi-row">
 
-  <div class="card-btn" onclick="openPanel('overdue')" style="border-top:2px solid var(--red)">
+  <div class="card-btn" ontouchstart="" onclick="openPanel('overdue')" style="border-top:2px solid var(--red)">
     <div class="ct">Overdue <span class="ct-icon">⚠️</span></div>
     <div class="kpi-val c-red" id="k-overdue">66</div>
     <div class="kpi-label">items past due</div>
@@ -776,7 +776,7 @@ body.mode-refined #dontknow-kpi-badge{background:rgba(167,139,250,.12) !importan
     <div class="kpi-sub" style="margin-top:6px">tap to see items</div>
   </div>
 
-  <div class="card-btn" onclick="openPanel('today')" style="border-top:2px solid var(--orange)">
+  <div class="card-btn" ontouchstart="" onclick="openPanel('today')" style="border-top:2px solid var(--orange)">
     <div class="ct">Due Today <span class="ct-icon">📬</span></div>
     <div class="kpi-val c-orange" id="k-today">3</div>
     <div class="kpi-label">items due today</div>
@@ -784,7 +784,7 @@ body.mode-refined #dontknow-kpi-badge{background:rgba(167,139,250,.12) !importan
     <div class="kpi-sub" style="margin-top:6px">tap to see items</div>
   </div>
 
-  <div class="card-btn" onclick="openPanel('book-rate')" style="border-top:2px solid var(--accent)">
+  <div class="card-btn" ontouchstart="" onclick="openPanel('book-rate')" style="border-top:2px solid var(--accent)">
     <div class="ct">Book Completion <span class="ct-icon">📖</span></div>
     <div class="kpi-val c-accent" id="k-book-rate">—</div>
     <div class="kpi-label">across all books</div>
@@ -796,7 +796,7 @@ body.mode-refined #dontknow-kpi-badge{background:rgba(167,139,250,.12) !importan
     <div class="kpi-sub" id="k-book-sub" style="margin-top:5px">sync to load</div>
   </div>
 
-  <div class="card-btn" onclick="openPanel('paper-rate')" style="border-top:2px solid var(--purple)">
+  <div class="card-btn" ontouchstart="" onclick="openPanel('paper-rate')" style="border-top:2px solid var(--purple)">
     <div class="ct">Collection Rate <span class="ct-icon">📄</span></div>
     <div class="kpi-val c-purple" id="k-paper-rate">—</div>
     <div class="kpi-label">across all collections</div>
@@ -808,7 +808,7 @@ body.mode-refined #dontknow-kpi-badge{background:rgba(167,139,250,.12) !importan
     <div class="kpi-sub" id="k-paper-sub" style="margin-top:5px">sync to load</div>
   </div>
 
-  <div class="card-btn" onclick="openPanel('week')" style="border-top:2px solid var(--blue)">
+  <div class="card-btn" ontouchstart="" onclick="openPanel('week')" style="border-top:2px solid var(--blue)">
     <div class="ct">Next 7 Days <span class="ct-icon">📅</span></div>
     <div class="kpi-val c-blue" id="k-week">—</div>
     <div class="kpi-label">upcoming reviews</div>
@@ -857,7 +857,7 @@ body.mode-refined #dontknow-kpi-badge{background:rgba(167,139,250,.12) !importan
     <canvas id="foreChart" height="210"></canvas>
   </div>
 
-  <div class="card-btn" onclick="openPanel('freshness')" style="border-top:2px solid var(--green)">
+  <div class="card-btn" ontouchstart="" onclick="openPanel('freshness')" style="border-top:2px solid var(--green)">
     <div class="ct">
       Modality Freshness
       <span style="display:flex;align-items:center;gap:4px">
@@ -2130,7 +2130,7 @@ function renderPlanning() {
 
       const tipAttr = dd.n > 0 ? ' data-tipdk="'+dd.dk+'"' : '';
 
-      gridHTML += '<div class="'+cls+'"'+tipAttr+' onclick="planToggleDay(\''+dd.dk+'\')">'
+      gridHTML += '<div class="'+cls+'"'+tipAttr+' ontouchstart="" onclick="planToggleDay(\''+dd.dk+'\')">'
         +'<div class="plan-cell-hdr">'
           +'<span class="plan-cell-day">'+dd.d+'</span>'
           +(dd.n > 0 ? '<span class="plan-cell-badge" style="color:'+badgeColor+';background:'+badgeBg+'">'+dd.n+'</span>' : '')
