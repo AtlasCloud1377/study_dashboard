@@ -37,6 +37,7 @@
   --r: 10px;
 }
 
+html { background:var(--bg); } /* fills Dynamic Island gap with app colour */
 body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; -webkit-font-smoothing:antialiased; }
 .page { max-width:1360px; margin:0 auto; padding:0 28px 72px; }
 
@@ -544,10 +545,10 @@ body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color
 
 /* ── iPhone (≤ 640px) ── */
 @media(max-width:640px){
-  /* Page */
-  .page{padding:0 12px calc(76px + env(safe-area-inset-bottom)) !important;}
+  /* Page — push content below Dynamic Island + above home bar */
+  .page{padding:env(safe-area-inset-top) 12px calc(76px + env(safe-area-inset-bottom)) !important;}
 
-  /* Header — compact */
+  /* Header — sticky below Dynamic Island */
   .header{padding:10px 0 12px;margin-bottom:12px;position:sticky;top:0;}
   .logo-sub{display:none;}
   .last-updated{font-size:.55rem;max-width:90px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
