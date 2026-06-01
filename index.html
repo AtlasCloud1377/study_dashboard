@@ -2,8 +2,15 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Study Tracker Dashboard</title>
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#070d18">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Study Tracker">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -524,6 +531,101 @@ body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color
 .plan-exp-close:hover{background:var(--card-hov);color:var(--text);}
 /* Slot grid inside expansion */
 .plan-day-slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px;}
+/* ══════════════════════════════════════════════════════
+   RESPONSIVE — iPad & iPhone
+   ══════════════════════════════════════════════════════ */
+
+/* ── iPad (641–1024px) ── */
+@media(max-width:1024px) and (min-width:641px){
+  .page{padding:0 18px calc(16px + env(safe-area-inset-bottom));}
+  .plan-wrap{grid-template-columns:160px 1fr;}
+  body.mode-refined #top-section-wrap{grid-template-columns:1fr 1fr;}
+}
+
+/* ── iPhone (≤ 640px) ── */
+@media(max-width:640px){
+  /* Page */
+  .page{padding:0 12px calc(76px + env(safe-area-inset-bottom)) !important;}
+
+  /* Header — compact */
+  .header{padding:10px 0 12px;margin-bottom:12px;position:sticky;top:0;}
+  .logo-sub{display:none;}
+  .last-updated{font-size:.55rem;max-width:90px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .header-right{gap:6px;}
+  /* Hide export + mode toggle on mobile */
+  #mode-toggle-btn{display:none;}
+  .sync-btn[onclick*="exportJSON"]{display:none;}
+  .sync-btn{padding:7px 12px;font-size:.7rem;}
+
+  /* Tab bar — move to bottom iOS style */
+  .tab-bar{
+    position:fixed;bottom:0;left:0;right:0;z-index:500;
+    display:flex;flex-direction:row;
+    border-top:1px solid var(--border);border-bottom:none;
+    margin:0;padding:0 0 env(safe-area-inset-bottom) 0;
+    background:var(--bg);gap:0;
+  }
+  .tab-btn{
+    flex:1;padding:10px 8px 8px;
+    border-bottom:none;border-top:3px solid transparent;
+    margin-bottom:0;font-size:.62rem;font-weight:700;
+    display:flex;flex-direction:column;align-items:center;gap:2px;
+  }
+  .tab-btn.tab-active{border-top-color:var(--accent);color:var(--accent);}
+
+  /* KPI row — 2 columns */
+  .kpi-row{grid-template-columns:repeat(2,1fr) !important;grid-auto-rows:auto !important;}
+  .kpi-row .card-btn{display:block !important;}
+  .kpi-val{font-size:1.6rem !important;}
+
+  /* Charts — stack */
+  .g-three{grid-template-columns:1fr !important;}
+  .g2{grid-template-columns:1fr !important;}
+  .source-strip{grid-template-columns:1fr !important;}
+
+  /* Refined top layout — stack on mobile */
+  body.mode-refined #top-section-wrap{grid-template-columns:1fr !important;}
+  body.mode-refined #right-column-wrap{display:none !important;}
+  body.mode-refined #heatmap-bottom-card{display:block !important;}
+
+  /* Planning layout — hide sidebar, full width calendar */
+  .plan-wrap{grid-template-columns:1fr !important;}
+  .plan-sidebar{display:none !important;}
+
+  /* Planning top strip — stack */
+  .plan-top-inner{flex-direction:column !important;align-items:flex-start !important;gap:8px !important;}
+
+  /* Calendar cells — larger touch targets */
+  .plan-cell{min-height:54px;padding:5px 6px;}
+  .plan-cell-day{font-size:.72rem;}
+  .plan-cell-item{font-size:.6rem;}
+
+  /* Day expansion — full width slots */
+  .plan-day-slots{grid-template-columns:1fr !important;}
+  .plan-exp{padding:12px 10px 10px;}
+
+  /* Slot cards */
+  .slot-card{padding:10px 12px;}
+
+  /* Modals — full screen on mobile */
+  .profile-modal{width:100% !important;max-width:100vw !important;max-height:90vh;overflow-y:auto;border-radius:20px 20px 0 0;position:fixed;bottom:0;left:0;margin:0;}
+  .profile-overlay{align-items:flex-end !important;}
+  .sdm-box{border-radius:20px 20px 0 0 !important;width:100% !important;max-width:100vw !important;}
+  #save-day-modal{align-items:flex-end !important;}
+  .plan-modal-box{width:100% !important;max-width:100vw !important;max-height:85vh;border-radius:20px 20px 0 0;margin:0;position:fixed;bottom:0;left:0;}
+  #plan-modal-forecast .plan-modal-box,
+  #plan-modal-history .plan-modal-box{position:fixed;bottom:0;left:0;}
+
+  /* Drawer (side panel) — full width */
+  #right-drawer{width:100% !important;max-width:100vw !important;}
+
+  /* Heatmap — smaller cells handled by JS, scrollable */
+  #study-heatmap{overflow-x:auto;}
+
+  /* Hide calendar tooltip on touch — use tap to expand instead */
+  .plan-cell-tooltip{display:none !important;}
+}
+
 /* ── Mode: Refined ── */
 /* Dashboard top layout: KPI (left) + Heatmap (right) */
 /* Grid stretches both columns to equal height */
@@ -4184,6 +4286,13 @@ function initMode(){
     const btn = document.getElementById('mode-toggle-btn');
     if(btn) btn.textContent = '↩ Classic';
   }
+}
+
+// ── Service Worker registration (PWA) ──
+if('serviceWorker' in navigator && location.protocol !== 'file:'){
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('sw.js').catch(function(){});
+  });
 }
 
 window.onload = () => {
