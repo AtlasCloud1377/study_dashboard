@@ -502,7 +502,15 @@ body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color
 .plan-cell-items{display:flex;flex-direction:column;gap:1px;flex:1;}
 .plan-cell-item{font-size:.58rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.45;padding:0 1px;}
 .plan-cell-item.done{color:var(--dim);text-decoration:line-through;}
-.plan-cell-more{font-size:.54rem;color:var(--dim);padding:1px;}
+.plan-cell-more{font-size:.54rem;color:var(--accent);padding:1px;cursor:default;}
+/* Calendar cell hover tooltip */
+.plan-cell-tooltip{position:fixed;z-index:8000;background:var(--card);border:1px solid var(--border-lt);border-radius:10px;padding:10px 13px;min-width:160px;max-width:240px;box-shadow:0 8px 32px rgba(0,0,0,.45);pointer-events:none;opacity:0;transform:translateY(4px);transition:opacity .15s,transform .15s;}
+.plan-cell-tooltip.visible{opacity:1;transform:translateY(0);}
+.plan-cell-tooltip-date{font-size:.6rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px;}
+.plan-cell-tooltip-item{font-size:.72rem;padding:3px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:7px;line-height:1.35;}
+.plan-cell-tooltip-item:last-child{border-bottom:none;}
+.plan-cell-tooltip-item.done{color:var(--dim);text-decoration:line-through;}
+.plan-cell-tooltip-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
 /* Progress bar */
 .plan-cell-prog{width:100%;height:3px;border-radius:99px;background:var(--border);overflow:hidden;margin-top:2px;}
 .plan-cell-prog-fill{height:100%;border-radius:99px;transition:width .3s ease;}
@@ -1582,6 +1590,83 @@ function planNavMonth(delta) {
   renderPlanning();
 }
 
+// ── Calendar cell hover tooltip ──
+// NOTE: TIP element is fetched lazily (it lives after this script block in the DOM)
+var _tipTimer = null;
+var _tipVisible = false;
+var _tipLocked = false; // true once tooltip is shown — stops position updates
+var SLOT_COLORS = {today:'#38bdf8',overdue:'#f87171',book:'#a78bfa',paper:'#6ee7b7',active:'#fb923c',dontknow:'#facc15',freshness:'#86efac'};
+
+function _cellTip(){ return document.getElementById('plan-cell-tooltip'); }
+
+function showCellTip(cell, e){
+  var TIP = _cellTip(); if(!TIP) return;
+  var dk = cell.dataset.tipdk; if(!dk) return;
+  var items = getV2Items(dk); if(!items.length) return;
+
+  var parts = dk.split('-');
+  var dt = new Date(+parts[0], +parts[1]-1, +parts[2]);
+  var label = dt.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+
+  document.getElementById('pct-date').textContent = label;
+  document.getElementById('pct-items').innerHTML = items.map(function(it){
+    var col = SLOT_COLORS[it.slotKey] || 'var(--muted)';
+    return '<div class="plan-cell-tooltip-item'+(it.done?' done':'')+'"><span class="plan-cell-tooltip-dot" style="background:'+col+'"></span>'+it.name+'</div>';
+  }).join('');
+
+  // Position once at cursor location — never moves again after this
+  var VW = window.innerWidth, VH = window.innerHeight;
+  TIP.style.visibility = 'hidden'; TIP.classList.add('visible'); // measure size first
+  var TW = TIP.offsetWidth || 220, TH = TIP.offsetHeight || 120;
+  TIP.style.visibility = '';
+  var left = e.clientX + 14;
+  var top  = e.clientY + 14;
+  if(left + TW > VW - 8) left = e.clientX - TW - 14;
+  if(top  + TH > VH - 8) top  = e.clientY - TH - 14;
+  TIP.style.left = left + 'px';
+  TIP.style.top  = top  + 'px';
+
+  // Allow pointer events so mouse can enter tooltip without dismissing it
+  TIP.style.pointerEvents = 'auto';
+  _tipVisible = true;
+  _tipLocked  = true;
+}
+
+function hideCellTip(){
+  var TIP = _cellTip(); if(!TIP) return;
+  clearTimeout(_tipTimer);
+  TIP.classList.remove('visible');
+  TIP.style.pointerEvents = 'none';
+  _tipVisible = false;
+  _tipLocked  = false;
+}
+
+document.addEventListener('mouseover', function(e){
+  // Don't re-trigger if mouse moved into the tooltip itself
+  if(e.target.closest('#plan-cell-tooltip')) return;
+  var cell = e.target.closest('[data-tipdk]');
+  if(!cell){ return; }
+  clearTimeout(_tipTimer);
+  _tipTimer = setTimeout(function(){ showCellTip(cell, e); }, 600);
+});
+
+document.addEventListener('mousemove', function(e){
+  // If mouse is over the tooltip, do nothing — keep it alive
+  if(e.target.closest('#plan-cell-tooltip')) return;
+  // If mouse left the cell and is not over tooltip, hide
+  var cell = e.target.closest('[data-tipdk]');
+  if(!cell && _tipLocked){
+    hideCellTip();
+    return;
+  }
+  if(!cell){ clearTimeout(_tipTimer); }
+});
+
+document.addEventListener('scroll', hideCellTip, true);
+document.addEventListener('click',  function(e){
+  if(!e.target.closest('#plan-cell-tooltip')) hideCellTip();
+}, true);
+
 function planResetToday(){
   if(!confirm('Reset today\'s tasks? This clears all manually added items. Synced items will remain.')) return;
   const tk=todayKey();
@@ -1743,7 +1828,9 @@ function renderPlanning() {
       const progPct  = showProg ? Math.round(dd.done/dd.total*100) : 0;
       const progCol  = progPct===100 ? 'var(--green)' : progPct>=60 ? 'var(--blue)' : 'var(--amber)';
 
-      gridHTML += '<div class="'+cls+'" onclick="planToggleDay(\''+dd.dk+'\')">'
+      const tipAttr = dd.n > 0 ? ' data-tipdk="'+dd.dk+'"' : '';
+
+      gridHTML += '<div class="'+cls+'"'+tipAttr+' onclick="planToggleDay(\''+dd.dk+'\')">'
         +'<div class="plan-cell-hdr">'
           +'<span class="plan-cell-day">'+dd.d+'</span>'
           +(dd.n > 0 ? '<span class="plan-cell-badge" style="color:'+badgeColor+';background:'+badgeBg+'">'+dd.n+'</span>' : '')
@@ -4166,5 +4253,12 @@ window.onload = () => {
     </div>
   </div>
 </div>
+
+<!-- Calendar cell hover tooltip -->
+<div id="plan-cell-tooltip" class="plan-cell-tooltip">
+  <div id="pct-date" class="plan-cell-tooltip-date"></div>
+  <div id="pct-items"></div>
+</div>
+
 </body>
 </html>
