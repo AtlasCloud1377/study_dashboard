@@ -517,7 +517,6 @@ body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color
 <div class="tab-bar">
   <button id="tabn-dashboard" class="tab-btn tab-active" onclick="switchTab('dashboard')">📊 Dashboard</button>
   <button id="tabn-planning" class="tab-btn" onclick="switchTab('planning')">🗓 Planning</button>
-  <button id="tabn-checklist" class="tab-btn" onclick="switchTab('checklist')">✅ Daily &amp; Pipeline</button>
 </div>
 
 <div id="tab-dashboard">
@@ -660,17 +659,6 @@ body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color
 </div><!-- /tab-dashboard -->
 
 <!-- ── Checklist Tab ── -->
-<div id="tab-checklist" style="display:none">
-  <div style="display:flex;justify-content:flex-end;margin-bottom:14px">
-    <div class="ver-toggle">
-      <button class="ver-btn v-active" id="ver-v1-btn" onclick="switchVersion('v1')">Current</button>
-      <button class="ver-btn" id="ver-v2-btn" onclick="switchVersion('v2')">✨ New Workflow</button>
-    </div>
-  </div>
-  <div id="cl-content"></div>
-  <div id="cl-v2" style="display:none"></div>
-</div>
-
 <!-- ── Planning Tab ── -->
 <div id="tab-planning" style="display:none">
   <div id="plan-root"></div>
@@ -733,6 +721,7 @@ const D = {
   // Log items — auto-populated by syncLog() on every sync
   overdueItems: [],  // [{name, category, daysOverdue}]
   todayItems:   [],  // [{name, category}]
+  futureItems:  {},  // {'YYYY-MM-DD': [{name, category}]} — future due items by date
 
   // Clinical Scenario — auto-populated by syncScenarios()
   scenarioItems: { fresh:[], fading:[], stale:[] },
@@ -1349,11 +1338,7 @@ let _planOpenDk = null;  // date key of the currently expanded day cell
 // Always use the same 2AM-offset date as the V2 tab so both agree on "today"
 function _planTodayStr(){ return todayKey(); }
 
-function _planRefreshV2IfNeeded(dk){
-  if(dk===_planTodayStr()&&document.getElementById('tab-checklist')?.style.display!=='none'
-     &&activeVer()==='v2')
-    renderChecklistV2();
-}
+function _planRefreshV2IfNeeded(dk){ /* checklist tab removed — no-op */ }
 
 // ── Date-aware V2 item actions (used from planning expansion) ──
 function v2ToggleItemForDate(id,dk){
@@ -1432,8 +1417,8 @@ function _planDayV2HTML(dk){
   const modeEmoji=isToday?'📅':isPast?'📖':'🔮';
   const modeColor=isToday?'var(--accent)':isPast?'var(--muted)':'var(--blue)';
 
-  // Daily non-autoFill slots
-  const dailySlots=V2_SLOTS.filter(function(s){return s.period==='daily'&&!s.autoFill;});
+  // All daily slots including Today Due
+  const dailySlots=V2_SLOTS.filter(function(s){return s.period==='daily';});
   // Weekly slots
   const weeklySlots=V2_SLOTS.filter(function(s){return s.period==='weekly';});
 
@@ -1474,6 +1459,15 @@ function planNavMonth(delta) {
   renderPlanning();
 }
 
+function planResetToday(){
+  if(!confirm('Reset today\'s tasks? This clears all manually added items. Synced items will remain.')) return;
+  const tk=todayKey();
+  // Keep only sync-sourced items (auto-filled from sheet)
+  const cleaned=getV2Items(tk).filter(function(x){return x.source==='sync';});
+  setV2Items(cleaned,tk);
+  renderPlanning();
+}
+
 function planToggleDay(dk) {
   _planOpenDk = (_planOpenDk === dk) ? null : dk;
   renderPlanning();
@@ -1508,8 +1502,9 @@ function renderPlanning() {
     const h = histMap[dk];
     const isPast  = dk < todayStr;
     const isToday = dk === todayStr;
-    const done    = (isPast || isToday) && h ? h.doneCount : 0;
-    const total   = (isPast || isToday) && h ? (h.total || items.length) : items.length;
+    // Use live item state so checkboxes update the sidebar instantly
+    const done    = items.filter(function(x){return x.done;}).length;
+    const total   = items.length;
     dayData.push({d, dk, items, n: items.length, done, total, isPast, isToday});
   }
 
@@ -1652,6 +1647,7 @@ function renderPlanning() {
               +'<div class="v2-pbar" style="width:150px"><div class="v2-pfill" style="width:'+todayPct+'%;background:'+todayScoreCol+'"></div></div></div>'
             : '<span style="font-size:.65rem;color:var(--dim)">No tasks planned today</span>')
           +'<button class="save-day-btn" style="width:auto;padding:8px 18px;font-size:.72rem" onclick="v2SaveDay()">💾 Save Day</button>'
+        +'<button onclick="planResetToday()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--border-lt);background:transparent;color:var(--muted);font-size:.72rem;cursor:pointer;font-weight:600;font-family:inherit;transition:.15s" onmouseover="this.style.borderColor=\'var(--red)\';this.style.color=\'var(--red)\'" onmouseout="this.style.borderColor=\'var(--border-lt)\';this.style.color=\'var(--muted)\'">↺ Reset</button>'
         +'</div>'
       +'</div>'
       +'<div style="font-size:.6rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Time Blocks</div>'
@@ -1859,9 +1855,9 @@ function syncLog() {
   gvizFetch('Log', function(resp) {
     try {
       const today = new Date(); today.setHours(0,0,0,0);
-      // Use Maps keyed by name so duplicates collapse to most-overdue entry
       const overdueMap = new Map();
       const todayMap   = new Map();
+      const futureMap  = {};  // 'YYYY-MM-DD' → [{name, category}]
       const fMap={};
       for(let _i=0;_i<7;_i++){const _d=new Date(today);_d.setDate(_d.getDate()+_i);const _dk=_d.getDate()+'/'+((_d.getMonth()+1));fMap[_dk]={d:_dk,label:_i===0?'Today':_d.toLocaleDateString('en-GB',{day:'numeric',month:'short'}),n:0};}
 
@@ -1869,9 +1865,9 @@ function syncLog() {
         if(!row?.c) continue;
         const rawName  = row.c[0]?.v;
         const name     = typeof rawName === 'string' ? rawName.replace(/\s*\(https?:\/\/[^)]+\)/g,'').trim() : rawName;
-        const rawDate  = row.c[1]?.v;   // gviz: "Date(Y,M,D)"  — month is 0-indexed
+        const rawDate  = row.c[1]?.v;   // column B — gviz: "Date(Y,M,D)", month 0-indexed
         const category = String(row.c[2]?.v || '—');
-        const isDone   = row.c[3]?.v;   // true / false / null
+        const isDone   = row.c[3]?.v;
 
         if(!name || typeof name !== 'string') continue;
         if(isDone === true) continue;
@@ -1883,34 +1879,39 @@ function syncLog() {
 
         if(itemDate < today) {
           const days = Math.round((today - itemDate) / 86400000);
-          // If same name appears multiple times keep the most-overdue entry
-          if(!overdueMap.has(name) || days > overdueMap.get(name).daysOverdue) {
+          if(!overdueMap.has(name) || days > overdueMap.get(name).daysOverdue)
             overdueMap.set(name, { name, category, daysOverdue: days });
-          }
         } else if(+itemDate === +today) {
           if(!todayMap.has(name)) todayMap.set(name, { name, category });
         } else {
+          // Future item — add to 7-day forecast count
           const _dk=itemDate.getDate()+'/'+(itemDate.getMonth()+1);
           if(fMap[_dk]) fMap[_dk].n++;
+          // And store full item details keyed by YYYY-MM-DD for Planning tab
+          const dkFull = m[1]+'-'+String(+m[2]+1).padStart(2,'0')+'-'+String(+m[3]).padStart(2,'0');
+          if(!futureMap[dkFull]) futureMap[dkFull]=[];
+          if(!futureMap[dkFull].find(function(x){return x.name===name;}))
+            futureMap[dkFull].push({name, category});
         }
       }
 
-      // Rebuild 7-day forecast from Log data
       D.forecast=Object.values(fMap);
       const _wkEl=document.getElementById('k-week');
       if(_wkEl) _wkEl.textContent=D.forecast.reduce(function(s,f){return s+f.n;},0);
       if(charts.fore){charts.fore.data.labels=D.forecast.map(function(f){return f.d;});charts.fore.data.datasets[0].data=D.forecast.map(function(f){return f.n;});charts.fore.data.datasets[0].backgroundColor=D.forecast.map(function(f,i){return i===0?'#fb923c':f.n>=8?'#f87171':'#38bdf8';});charts.fore.update();}
 
-      // Sort overdue: most overdue first
       D.overdueItems = [...overdueMap.values()].sort((a,b) => b.daysOverdue - a.daysOverdue);
       D.todayItems   = [...todayMap.values()];
-      v2AutoFillToday();
-      D.kpi.overdue  = D.overdueItems.length;
-      D.kpi.today    = D.todayItems.length;
+      D.futureItems  = futureMap;
 
+      v2AutoFillToday();
+      v2AutoFillFuture();
+
+      D.kpi.overdue = D.overdueItems.length;
+      D.kpi.today   = D.todayItems.length;
       document.getElementById('k-overdue').textContent = D.kpi.overdue;
       document.getElementById('k-today').textContent   = D.kpi.today;
-      console.log(`Log sync: overdue=${D.kpi.overdue}, today=${D.kpi.today}`);
+      console.log(`Log sync: overdue=${D.kpi.overdue}, today=${D.kpi.today}, future dates=${Object.keys(futureMap).length}`);
     } catch(e) { console.warn('Log sync error:', e); }
   });
 }
@@ -2103,20 +2104,11 @@ function syncNow(btn) {
 // TAB SWITCHING
 // ════════════════════════════════════════════════════════
 function switchTab(name) {
-  ['dashboard','checklist','planning'].forEach(t => {
+  ['dashboard','planning'].forEach(t => {
     document.getElementById('tab-'+t).style.display = (t === name) ? '' : 'none';
     const btn = document.getElementById('tabn-'+t);
     if(btn) btn.classList.toggle('tab-active', t === name);
   });
-  if(name === 'checklist'){
-    const ver=activeVer();
-    document.getElementById('cl-content').style.display=ver==='v2'?'none':'';
-    document.getElementById('cl-v2').style.display=ver==='v2'?'':'none';
-    document.getElementById('ver-v1-btn').classList.toggle('v-active',ver==='v1');
-    document.getElementById('ver-v2-btn').classList.toggle('v-active',ver==='v2');
-    if(ver==='v2') renderChecklistV2(); else renderChecklist();
-    checkPipelineCarryover();
-  }
   if(name === 'planning') renderPlanning();
 }
 
@@ -2470,7 +2462,7 @@ function addToPipeline(item){
   if(pl.find(x=>x.id===item.id))return;
   pl.push({...item,done:false,addedAt:Date.now()});
   setPipeline(pl);
-  if(document.getElementById('tab-checklist')?.style.display!=='none')renderChecklist();
+  /* tab-checklist removed */
 }
 function removeFromPipeline(id){
   const pl=getPipeline();
@@ -2482,7 +2474,7 @@ function removeFromPipeline(id){
     if(g){if(g.pt==='daily')setDailyCount(g.key,Math.max(0,getDailyCount(g.key)-1));else setWeeklyCount(g.key,Math.max(0,getWeeklyCount(g.key)-1));}
   }
   setPipeline(pl.filter(x=>x.id!==id));
-  if(document.getElementById('tab-checklist')?.style.display!=='none')renderChecklist();
+  /* tab-checklist removed */
 }
 function togglePipelineItem(id){
   const pl=getPipeline();
@@ -2653,7 +2645,7 @@ function checkPipelineCarryover(){
       +'<span id="cov-sel-count" style="font-size:.6rem;color:var(--muted);margin-left:auto">'+undoneItems.length+' selected</span>'
     +'</div>';
 
-  const container=document.getElementById('tab-checklist');
+  const container=document.getElementById('plan-root');
   if(container) container.insertBefore(banner, container.firstChild);
 
   banner.querySelectorAll('input[type=checkbox]').forEach(function(cb){
@@ -3282,6 +3274,32 @@ function v2AutoFillToday(){
   if(changed){setV2Items(arr);if(activeVer()==='v2'&&document.getElementById('cl-v2')?.style.display!=='none')renderChecklistV2();}
 }
 
+function v2AutoFillFuture(){
+  // Writes sheet-sourced future due items into each future date's localStorage
+  // so they appear in the Planning calendar's Today Due slot automatically.
+  if(!D.futureItems||!Object.keys(D.futureItems).length)return;
+  const tk=todayKey();
+  let anyChanged=false;
+  Object.entries(D.futureItems).forEach(function([dk,sheetItems]){
+    if(dk<=tk)return; // skip past / today (handled by v2AutoFillToday)
+    const arr=getV2Items(dk);
+    // Remove stale sync-sourced 'today' items so re-sync stays accurate
+    const cleaned=arr.filter(function(x){return!(x.slotKey==='today'&&x.source==='sync');});
+    let changed=cleaned.length!==arr.length;
+    // Add fresh items from sheet
+    sheetItems.forEach(function(it){
+      const id='v2td_'+slugify(it.name).slice(0,20);
+      if(!cleaned.find(function(x){return x.id===id;})){
+        cleaned.push({id,slotKey:'today',type:'today',name:it.name,sub:it.category,done:false,blockId:null,addedAt:Date.now(),source:'sync'});
+        changed=true;
+      }
+    });
+    if(changed){setV2Items(cleaned,dk);anyChanged=true;}
+  });
+  if(anyChanged&&document.getElementById('tab-planning')?.style.display!=='none')
+    renderPlanning();
+}
+
 // ── Picker (supports multi-select for book/paper)
 let _v2pSlot=null,_v2pDate=null;
 let _v2pSelected={}; // {id:{id,type,name,sub}} — pending multi-select
@@ -3322,8 +3340,6 @@ function v2ToggleSelect(id,type,name,sub){
 }
 // Refresh whichever tabs are currently visible after a picker action
 function _v2RefreshVisibleTabs(){
-  if(document.getElementById('tab-checklist')?.style.display!=='none'&&activeVer()==='v2')
-    renderChecklistV2();
   if(document.getElementById('tab-planning')?.style.display!=='none')
     renderPlanning();
 }
