@@ -40,9 +40,37 @@ body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color
   position:sticky; top:0; z-index:50; background:var(--bg);
 }
 .logo { display:flex; align-items:center; gap:10px; }
-.logo-icon { width:32px; height:32px; border-radius:8px; background:linear-gradient(135deg,#0ea5e9,#6366f1); display:flex; align-items:center; justify-content:center; font-size:.95rem; }
+.logo-icon { width:36px; height:36px; border-radius:10px; background:linear-gradient(135deg,#0ea5e9,#6366f1); display:flex; align-items:center; justify-content:center; font-size:.95rem; cursor:pointer; overflow:hidden; flex-shrink:0; transition:opacity .15s; position:relative; }
+.logo-icon:hover { opacity:.8; }
+.logo-icon img { width:100%; height:100%; object-fit:cover; border-radius:10px; }
+.logo-icon-edit-hint { position:absolute;inset:0;background:rgba(0,0,0,.5);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:.55rem;color:#fff;opacity:0;transition:.15s; }
+.logo-icon:hover .logo-icon-edit-hint { opacity:1; }
 .logo-title { font-size:.95rem; font-weight:800; letter-spacing:-.025em; }
 .logo-sub   { font-size:.62rem; color:var(--muted); margin-top:1px; }
+/* Profile modal */
+.profile-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
+.profile-modal{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px;width:400px;max-width:92vw;display:flex;flex-direction:column;gap:18px;}
+.profile-modal-header{display:flex;align-items:center;justify-content:space-between;}
+.profile-modal-title{font-size:.9rem;font-weight:800;letter-spacing:-.02em;}
+.profile-close-btn{background:none;border:none;color:var(--muted);font-size:1.1rem;cursor:pointer;line-height:1;padding:2px 6px;border-radius:6px;}
+.profile-close-btn:hover{color:var(--text);}
+.profile-avatar-row{display:flex;align-items:center;gap:16px;}
+.profile-avatar{width:64px;height:64px;border-radius:14px;background:linear-gradient(135deg,#0ea5e9,#6366f1);display:flex;align-items:center;justify-content:center;font-size:1.6rem;overflow:hidden;flex-shrink:0;cursor:pointer;border:2px solid var(--border);transition:border-color .15s;}
+.profile-avatar:hover{border-color:var(--accent);}
+.profile-avatar img{width:100%;height:100%;object-fit:cover;border-radius:12px;}
+.profile-upload-hint{font-size:.68rem;color:var(--muted);line-height:1.5;}
+.profile-upload-hint span{color:var(--accent);cursor:pointer;}
+.profile-upload-hint span:hover{text-decoration:underline;}
+.profile-field-label{font-size:.65rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;}
+.profile-title-input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);font-size:.9rem;font-weight:800;font-family:inherit;outline:none;box-sizing:border-box;}
+.profile-title-input:focus{border-color:var(--accent);}
+.profile-gameplan-input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:.75rem;font-family:inherit;outline:none;resize:vertical;min-height:100px;box-sizing:border-box;line-height:1.6;}
+.profile-gameplan-input:focus{border-color:var(--accent);}
+.profile-save-btn{padding:9px 22px;border-radius:9px;border:none;background:var(--accent);color:#fff;font-size:.75rem;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity .15s;align-self:flex-end;}
+.profile-save-btn:hover{opacity:.85;}
+/* Sheet hyperlink in subtitle */
+.sheet-sub-link{color:var(--accent);text-decoration:none;font-weight:600;}
+.sheet-sub-link:hover{text-decoration:underline;}
 .header-right { display:flex; align-items:center; gap:10px; }
 .last-updated { font-size:.63rem; color:var(--muted); }
 .sync-btn {
@@ -490,12 +518,17 @@ body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color
 .plan-day-slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px;}
 /* ── Mode: Refined ── */
 /* Dashboard top layout: KPI (left) + Heatmap (right) */
-body.mode-refined #top-section-wrap{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start;margin-bottom:12px;}
-body.mode-refined .kpi-row{margin-bottom:0;}
-body.mode-refined #right-column-wrap{display:flex !important;flex-direction:column;gap:12px;}
-body.mode-refined #heatmap-top-slot{display:block !important;}
+/* Grid stretches both columns to equal height */
+body.mode-refined #top-section-wrap{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:stretch;margin-bottom:12px;}
+/* KPI row: cards stretch vertically and are equal height */
+body.mode-refined .kpi-row{margin-bottom:0;display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:1fr;gap:10px;align-items:stretch;}
+body.mode-refined .kpi-row .card-btn{display:flex;flex-direction:column;}
+/* Right column stretches and distributes space */
+body.mode-refined #right-column-wrap{display:flex !important;flex-direction:column;gap:12px;height:100%;}
+body.mode-refined #heatmap-top-slot{display:block !important;flex-shrink:0;}
 body.mode-refined #study-heatmap-top{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:160px;}
-body.mode-refined #study-consistency-card{display:block;}
+/* Consistency card stretches to fill remaining space */
+body.mode-refined #study-consistency-card{display:block;flex:1;display:flex;flex-direction:column;}
 body.mode-refined #heatmap-bottom-card{display:none;}
 /* 1. Larger cell item text */
 body.mode-refined .plan-cell-item{font-size:.63rem;}
@@ -518,11 +551,14 @@ body.mode-refined #dontknow-kpi-badge{background:rgba(167,139,250,.12) !importan
 
 <!-- ── Header ── -->
 <header class="header">
-  <div class="logo">
-    <div class="logo-icon">📡</div>
+  <div class="logo" style="cursor:default">
+    <div class="logo-icon" onclick="openProfileModal()" title="Edit profile">
+      <span id="logo-icon-content">📡</span>
+      <div class="logo-icon-edit-hint">✎</div>
+    </div>
     <div>
-      <div class="logo-title">Study Tracker</div>
-      <div class="logo-sub">Radiology Spaced Repetition · Live from Google Sheet</div>
+      <div class="logo-title" id="logo-title-display">Study Tracker</div>
+      <div class="logo-sub">Radiology Spaced Repetition · <a href="https://docs.google.com/spreadsheets/d/1u58YRfh_mT8k7TmGiG_UKzxcS5PDL8JchCm0rjvV8_Y/edit" target="_blank" rel="noopener" class="sheet-sub-link">Live from Google Sheet ↗</a></div>
     </div>
   </div>
   <div class="header-right">
@@ -536,6 +572,41 @@ body.mode-refined #dontknow-kpi-badge{background:rgba(167,139,250,.12) !importan
     </button>
   </div>
 </header>
+
+<!-- ── Profile Modal ── -->
+<div id="profile-overlay" class="profile-overlay" style="display:none" onclick="if(event.target===this)closeProfileModal()">
+  <div class="profile-modal">
+    <div class="profile-modal-header">
+      <div class="profile-modal-title">👤 Profile</div>
+      <button class="profile-close-btn" onclick="closeProfileModal()">✕</button>
+    </div>
+
+    <!-- Avatar -->
+    <div class="profile-avatar-row">
+      <div class="profile-avatar" onclick="document.getElementById('avatar-upload').click()" title="Click to change image">
+        <span id="profile-avatar-content">📡</span>
+      </div>
+      <div>
+        <div class="profile-upload-hint">Click the icon to upload a custom image.<br><span onclick="clearProfileImage()">Remove image</span> · Saved locally in your browser.</div>
+      </div>
+      <input type="file" id="avatar-upload" accept="image/*" style="display:none" onchange="handleAvatarUpload(event)">
+    </div>
+
+    <!-- Title -->
+    <div>
+      <div class="profile-field-label">Dashboard Title</div>
+      <input id="profile-title-input" class="profile-title-input" type="text" placeholder="Study Tracker" maxlength="40">
+    </div>
+
+    <!-- Game Plan -->
+    <div>
+      <div class="profile-field-label">🎯 My Game Plan</div>
+      <textarea id="profile-gameplan-input" class="profile-gameplan-input" placeholder="Write your study strategy, goals, or notes here…"></textarea>
+    </div>
+
+    <button class="profile-save-btn" onclick="saveProfile()">Save Changes</button>
+  </div>
+</div>
 
 <!-- ── Tab Bar ── -->
 <div class="tab-bar">
@@ -3940,6 +4011,71 @@ function _showAutoSaveToast(dateStr, done, total){
 }
 
 // ════════════════════════════════════════════════════════
+// PROFILE — avatar, title, game plan
+// ════════════════════════════════════════════════════════
+const PROF_KEY = LS+'profile';
+function loadProfile(){
+  try{
+    const p=JSON.parse(localStorage.getItem(PROF_KEY)||'{}');
+    // Apply title
+    const title=p.title||'Study Tracker';
+    const td=document.getElementById('logo-title-display');
+    if(td) td.textContent=title;
+    document.title=title;
+    // Apply avatar image
+    _applyAvatar(p.avatar||null);
+  }catch(e){}
+}
+function _applyAvatar(dataUrl){
+  const logoContent=document.getElementById('logo-icon-content');
+  const profContent=document.getElementById('profile-avatar-content');
+  if(dataUrl){
+    const imgTag='<img src="'+dataUrl+'" alt="avatar">';
+    if(logoContent) logoContent.outerHTML='<img id="logo-icon-content" src="'+dataUrl+'" style="width:100%;height:100%;object-fit:cover;border-radius:10px">';
+    if(profContent) profContent.outerHTML='<img id="profile-avatar-content" src="'+dataUrl+'" style="width:100%;height:100%;object-fit:cover;border-radius:12px">';
+  } else {
+    if(logoContent) { logoContent.outerHTML='<span id="logo-icon-content">📡</span>'; }
+    if(profContent) { profContent.outerHTML='<span id="profile-avatar-content">📡</span>'; }
+  }
+}
+function openProfileModal(){
+  const p=JSON.parse(localStorage.getItem(PROF_KEY)||'{}');
+  document.getElementById('profile-title-input').value=p.title||'';
+  document.getElementById('profile-gameplan-input').value=p.gameplan||'';
+  // Sync avatar preview
+  _applyAvatar(p.avatar||null);
+  document.getElementById('profile-overlay').style.display='flex';
+}
+function closeProfileModal(){
+  document.getElementById('profile-overlay').style.display='none';
+}
+function saveProfile(){
+  const p=JSON.parse(localStorage.getItem(PROF_KEY)||'{}');
+  p.title=document.getElementById('profile-title-input').value.trim()||'Study Tracker';
+  p.gameplan=document.getElementById('profile-gameplan-input').value;
+  localStorage.setItem(PROF_KEY,JSON.stringify(p));
+  loadProfile();
+  closeProfileModal();
+}
+function handleAvatarUpload(e){
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(ev){
+    const p=JSON.parse(localStorage.getItem(PROF_KEY)||'{}');
+    p.avatar=ev.target.result;
+    localStorage.setItem(PROF_KEY,JSON.stringify(p));
+    _applyAvatar(p.avatar);
+  };
+  reader.readAsDataURL(file);
+}
+function clearProfileImage(){
+  const p=JSON.parse(localStorage.getItem(PROF_KEY)||'{}');
+  delete p.avatar;
+  localStorage.setItem(PROF_KEY,JSON.stringify(p));
+  _applyAvatar(null);
+}
+
+// ════════════════════════════════════════════════════════
 // THEME MODE — Classic (default) vs Refined
 // ════════════════════════════════════════════════════════
 const MODE_KEY = LS+'theme_mode';
@@ -3964,6 +4100,7 @@ function initMode(){
 }
 
 window.onload = () => {
+  loadProfile();
   initMode();
   render();
   buildCharts();
