@@ -563,6 +563,10 @@ body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color
 @media(max-width:640px){.plan-exp-swipe-hint{display:block;}}
 /* Slot grid inside expansion */
 .plan-day-slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px;min-width:0;}
+/* Daily Tasks: fixed 2-column layout (wider cards) */
+.plan-day-slots-2col{grid-template-columns:repeat(2,minmax(0,1fr));}
+/* Active Work Update: full width, sits below everything */
+.slot-card-active{grid-column:1/-1;}
 /* ══════════════════════════════════════════════════════
    RESPONSIVE — iPad & iPhone
    ══════════════════════════════════════════════════════ */
@@ -1774,7 +1778,7 @@ function _planDaySlotCard(sl, dk, items, blocks){
   const addBtn='<button class="slot-add-btn" onclick="v2OpenPicker(\''+sl.key+'\',\''+dk+'\')">+ Add '+sl.label.toLowerCase()+'</button>';
   const emptyMsg=slItems.length===0?'<div style="font-size:.64rem;color:var(--dim);padding:6px 0 2px">Nothing yet</div>':'';
 
-  return '<div class="slot-card" style="border-left-color:'+sl.color+'">'
+  return '<div class="slot-card slot-card-'+sl.key+'" style="border-left-color:'+sl.color+'">'
     +'<div class="slot-hdr">'
       +'<span class="slot-icon">'+sl.icon+'</span>'
       +'<span class="slot-label" style="color:'+sl.color+'">'+sl.label+'</span>'
@@ -1835,7 +1839,7 @@ function _planDayV2HTML(dk){
       +'<button class="plan-exp-close" onclick="planToggleDay(\''+dk+'\')">✕</button>'
     +'</div>'
     +'<div style="font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px">Daily Tasks</div>'
-    +'<div class="plan-day-slots">'+dailyHTML+'</div>'
+    +'<div class="plan-day-slots plan-day-slots-2col">'+dailyHTML+'</div>'
     +'<div style="font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:10px 0 6px">Weekly Goals</div>'
     +'<div class="plan-day-slots">'+weeklyHTML+'</div>'
     +'</div>';
