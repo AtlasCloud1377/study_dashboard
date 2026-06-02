@@ -552,7 +552,7 @@ body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color
 .plan-cell-prog{width:100%;height:3px;border-radius:99px;background:var(--border);overflow:hidden;margin-top:2px;}
 .plan-cell-prog-fill{height:100%;border-radius:99px;transition:width .3s ease;}
 /* Expansion panel — spans all 7 grid columns */
-.plan-exp{grid-column:1 / -1;background:var(--card-alt);border:1px solid var(--border-lt);border-radius:10px;padding:14px 14px 12px;margin:2px 0 4px;min-width:0;max-width:100%;overflow-x:hidden;}
+.plan-exp{grid-column:1 / -1;background:var(--card-alt);border:1px solid var(--border-lt);border-radius:10px;padding:14px 14px 12px;margin:2px 0 4px;min-width:0;max-width:100%;overflow:hidden;}
 .plan-exp-hdr{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
 .plan-exp-hdr-label{font-size:.8rem;font-weight:800;letter-spacing:-.02em;color:var(--text);}
 .plan-exp-hdr-sub{font-size:.62rem;color:var(--muted);}
@@ -4008,7 +4008,7 @@ function v2AutoFillFuture(){
 let _v2pSlot=null,_v2pDate=null;
 let _v2pSelected={}; // {id:{id,type,name,sub}} — pending multi-select
 
-const _V2_MULTISELECT_SLOTS=new Set(['book','paper']);
+const _V2_MULTISELECT_SLOTS=new Set(['book','paper','dontknow','freshness']);
 
 function v2OpenPicker(slotKey,date){
   _v2pSlot=slotKey;_v2pDate=date||null;_v2pSelected={};
@@ -4167,7 +4167,9 @@ function _v2RenderPBody(slotKey,date){
       html+='<div class="d-sect-hdr" style="color:var(--purple)">Pending topics ('+D.dontKnowItems.length+')</div>';
       D.dontKnowItems.forEach(function(it){
         const id='v2dk_'+slugify(it.name).slice(0,20);const added=inSlot(id);
-        html+='<div class="picker-row"'+(added?'':' onclick="v2PickItem(\''+id+'\',\'dontknow\',\''+it.name.replace(/'/g,"\\'")+'\')"')+'><div class="picker-cb'+(added?' sel':'')+'">✓</div><span class="picker-label">'+it.name+'</span></div>';
+        const isSel=added||!!_v2pSelected[id];
+        const clickAttr=added?'':' onclick="v2ToggleSelect(\''+id.replace(/'/g,"\\'")+'\',\'dontknow\',\''+it.name.replace(/'/g,"\\'")+'\')"';
+        html+='<div class="picker-row" data-pid="'+id+'"'+clickAttr+(added?' style="opacity:.55;cursor:default"':'')+'><div class="picker-cb'+(isSel?' sel':'')+'">✓</div><span class="picker-label">'+it.name+'</span></div>';
       });
     }
   } else if(slotKey==='freshness'){
@@ -4179,14 +4181,18 @@ function _v2RenderPBody(slotKey,date){
         html+='<div class="d-sect-hdr" style="color:var(--red)">⚠️ Stale ('+stale.length+')</div>';
         stale.forEach(function(it){
           const id='v2fr_st_'+slugify(it.name).slice(0,20);const added=inSlot(id);
-          html+='<div class="picker-row"'+(added?'':' onclick="v2PickItem(\''+id+'\',\'freshness\',\''+it.name.replace(/'/g,"\\'")+'\',"'+(it.modal||'')+'")"')+'><div class="picker-cb'+(added?' sel':'')+'">✓</div><span class="picker-label">'+it.name+'</span>'+(it.modal?'<span style="font-size:.58rem;color:var(--dim);margin-left:4px">'+it.modal+'</span>':'')+'</div>';
+          const isSel=added||!!_v2pSelected[id];
+          const clickAttr=added?'':' onclick="v2ToggleSelect(\''+id.replace(/'/g,"\\'")+'\',\'freshness\',\''+it.name.replace(/'/g,"\\'")+'\',\''+(it.modal||'').replace(/'/g,"\\'")+'\')"';
+          html+='<div class="picker-row" data-pid="'+id+'"'+clickAttr+(added?' style="opacity:.55;cursor:default"':'')+'><div class="picker-cb'+(isSel?' sel':'')+'">✓</div><span class="picker-label">'+it.name+'</span>'+(it.modal?'<span style="font-size:.58rem;color:var(--dim);margin-left:4px">'+it.modal+'</span>':'')+'</div>';
         });
       }
       if(fading.length){
         html+='<div class="d-sect-hdr" style="color:var(--amber)">📉 Fading ('+fading.length+')</div>';
         fading.forEach(function(it){
           const id='v2fr_fd_'+slugify(it.name).slice(0,20);const added=inSlot(id);
-          html+='<div class="picker-row"'+(added?'':' onclick="v2PickItem(\''+id+'\',\'freshness\',\''+it.name.replace(/'/g,"\\'")+'\',"'+(it.modal||'')+'")"')+'><div class="picker-cb'+(added?' sel':'')+'">✓</div><span class="picker-label">'+it.name+'</span>'+(it.modal?'<span style="font-size:.58rem;color:var(--dim);margin-left:4px">'+it.modal+'</span>':'')+'</div>';
+          const isSel=added||!!_v2pSelected[id];
+          const clickAttr=added?'':' onclick="v2ToggleSelect(\''+id.replace(/'/g,"\\'")+'\',\'freshness\',\''+it.name.replace(/'/g,"\\'")+'\',\''+(it.modal||'').replace(/'/g,"\\'")+'\')"';
+          html+='<div class="picker-row" data-pid="'+id+'"'+clickAttr+(added?' style="opacity:.55;cursor:default"':'')+'><div class="picker-cb'+(isSel?' sel':'')+'">✓</div><span class="picker-label">'+it.name+'</span>'+(it.modal?'<span style="font-size:.58rem;color:var(--dim);margin-left:4px">'+it.modal+'</span>':'')+'</div>';
         });
       }
     }
