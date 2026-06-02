@@ -552,7 +552,7 @@ body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color
 .plan-cell-prog{width:100%;height:3px;border-radius:99px;background:var(--border);overflow:hidden;margin-top:2px;}
 .plan-cell-prog-fill{height:100%;border-radius:99px;transition:width .3s ease;}
 /* Expansion panel — spans all 7 grid columns */
-.plan-exp{grid-column:1 / -1;background:var(--card-alt);border:1px solid var(--border-lt);border-radius:10px;padding:14px 14px 12px;margin:2px 0 4px;min-width:0;max-width:100%;overflow:hidden;}
+.plan-exp{grid-column:1 / -1;background:var(--card-alt);border:1px solid var(--border-lt);border-radius:10px;padding:14px 14px 12px;margin:2px 0 4px;min-width:0;max-width:100%;overflow-x:hidden;}
 .plan-exp-hdr{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
 .plan-exp-hdr-label{font-size:.8rem;font-weight:800;letter-spacing:-.02em;color:var(--text);}
 .plan-exp-hdr-sub{font-size:.62rem;color:var(--muted);}
@@ -2472,8 +2472,13 @@ function sheetWriteBack(it, dk) {
     params = it.done
       ? 'action=datePaper&name='  + encodeURIComponent(it.name)
       : 'action=clearPaper&name=' + encodeURIComponent(it.name);
+  } else if (it.slotKey === 'freshness') {
+    // Modality tab col F — write today's date, or clear
+    params = it.done
+      ? 'action=dateFreshness&name='  + encodeURIComponent(it.name)
+      : 'action=clearFreshness&name=' + encodeURIComponent(it.name);
   } else {
-    return; // dontknow, freshness — no write-back
+    return; // dontknow — no write-back
   }
   fetch(GAS_URL + '?' + params, {mode:'no-cors'}).catch(function(){});
 }
