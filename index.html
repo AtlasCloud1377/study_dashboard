@@ -1749,15 +1749,38 @@ function v2CycleBlockForDate(id,dk){
   setV2Items(arr,dk);_planRefreshV2IfNeeded(dk);renderPlanning();
 }
 
+// Today Due: order items so headings are mixed (round-robin All Daily/Lecture/Book/Paper)
+function _v2MixByCategory(arr){
+  const byCat=new Map();
+  arr.forEach(function(it){
+    const r=_v2OverdueCatRank(it.sub||it.category);
+    if(!byCat.has(r))byCat.set(r,[]);
+    byCat.get(r).push(it);
+  });
+  const cats=[...byCat.keys()].sort(function(a,b){return a-b;});
+  const out=[];let any=true;
+  while(any){any=false;cats.forEach(function(c){const l=byCat.get(c);if(l.length){out.push(l.shift());any=true;}});}
+  return out;
+}
+
 // ── Render a single slot card for a specific date ──
 function _planDaySlotCard(sl, dk, items, blocks){
-  const slItems=items.filter(function(x){return x.slotKey===sl.key;});
-  const done=slItems.filter(function(x){return x.done;}).length;
-  const tgt=sl.autoFill?slItems.length:getTarget(sl.key,sl.defaultTarget??1);
-  const allDone=slItems.length>0&&done===slItems.length;
-  const slPct=Math.max(tgt,slItems.length)>0?Math.min(100,Math.round(done/Math.max(tgt,slItems.length)*100)):0;
+  let slItems=items.filter(function(x){return x.slotKey===sl.key;});
+  const isToday=sl.key==='today';
+  // Today Due: mix headings so the visible (capped) set is varied
+  if(isToday&&slItems.length>1) slItems=_v2MixByCategory(slItems);
 
-  const itemsHTML=slItems.map(function(it){
+  // Today Due shows the goal-set (= Clearance Forecast "Due Today" rate) plus any extra revealed via "Add three more"
+  const tgt=isToday?getTarget('today',5):(sl.autoFill?slItems.length:getTarget(sl.key,sl.defaultTarget??1));
+  const visible=slItems;
+
+  // Progress: for Today Due, the counter stays /rate — count completions among the goal-set (first rate items) only
+  const done=isToday?slItems.slice(0,tgt).filter(function(x){return x.done;}).length:slItems.filter(function(x){return x.done;}).length;
+  const allDone=isToday?(tgt>0&&done>=tgt):(slItems.length>0&&done===slItems.length);
+  const denom=isToday?tgt:Math.max(tgt,slItems.length);
+  const slPct=denom>0?Math.min(100,Math.round(done/denom*100)):0;
+
+  const renderItem=function(it){
     const blk=it.blockId?blocks.find(function(b){return b.id===it.blockId;}):null;
     const blkBadge=blk
       ?'<span class="slot-blk" style="color:'+blk.color+';border-color:'+blk.color+'" onclick="v2CycleBlockForDate(\''+it.id+'\',\''+dk+'\');event.stopPropagation()" title="Click to change">'+blk.label+'</span>'
@@ -1773,7 +1796,9 @@ function _planDaySlotCard(sl, dk, items, blocks){
       +nameHTML+blkBadge
       +'<button class="slot-rm" onclick="v2RemoveItemForDate(\''+it.id+'\',\''+dk+'\');event.stopPropagation()" title="Remove">×</button>'
       +'</div>';
-  }).join('');
+  };
+
+  const itemsHTML=visible.map(renderItem).join('');
 
   const addBtn='<button class="slot-add-btn" onclick="v2OpenPicker(\''+sl.key+'\',\''+dk+'\')">+ Add '+sl.label.toLowerCase()+'</button>';
   const emptyMsg=slItems.length===0?'<div style="font-size:.64rem;color:var(--dim);padding:6px 0 2px">Nothing yet</div>':'';
@@ -2797,6 +2822,10 @@ function adjTarget(key, def, delta) {
   if(activeVer()==='v2') renderChecklistV2(); else renderChecklist();
   // Keep planning expansion in sync
   if(document.getElementById('tab-planning')?.style.display!=='none') renderPlanning();
+  // Refresh the Clearance Forecast modal if it's open (its body isn't part of the tab render)
+  const _fm=document.getElementById('plan-modal-forecast');
+  const _fb=document.getElementById('plan-modal-forecast-body');
+  if(_fm&&_fb&&_fm.style.display!=='none') _fb.innerHTML=buildClearanceForecastHTML();
 }
 
 // ════════════════════════════════════════════════════════
@@ -3535,6 +3564,7 @@ function renderChecklist() {
         <div class="cl-burn-hdr">
           <span>Backlog / Metric</span><span>Remaining</span><span>Rate</span><span>Est. Clear Date</span>
         </div>
+        ${burnRowHTML('📬','Due Today',            D.kpi.today,                           getTarget('today',5),'var(--orange)','today',    5)}
         ${burnRowHTML('⚠️','Overdue Items',        D.kpi.overdue,                         tOverdue,   'var(--red)',    'overdue',   3)}
         ${burnRowHTML('📖','Book Chapters',         bookRemaining,                         tBook,      'var(--accent)', 'book',      2)}
         ${burnRowHTML('📄','Papers',                paperRemaining,                        tPaper,     'var(--purple)', 'paper',     1)}
@@ -3976,15 +4006,22 @@ function v2CycleBlock(id){
 
 function v2AutoFillToday(){
   if(!D.todayItems||!D.todayItems.length)return;
-  const arr=getV2Items();let changed=false;
-  D.todayItems.forEach(function(it){
+  // Only the goal-set (top "Due Today" rate, mixed across headings) is auto-added; the rest stay available in the picker
+  const N=getTarget('today',5);
+  const pick=_v2MixByCategory(D.todayItems.slice()).slice(0,N);
+  const pickIds=new Set(pick.map(function(it){return 'v2td_'+slugify(it.name).slice(0,20);}));
+  const arr=getV2Items();
+  // Drop sync-added today items that fell out of the goal-set (keep manual picks and anything already done)
+  const kept=arr.filter(function(x){return!(x.slotKey==='today'&&x.source==='sync'&&!x.done&&!pickIds.has(x.id));});
+  let changed=kept.length!==arr.length;
+  pick.forEach(function(it){
     const id='v2td_'+slugify(it.name).slice(0,20);
-    if(!arr.find(x=>x.id===id)){
-      arr.push({id,slotKey:'today',type:'today',name:it.name,sub:it.category,done:false,blockId:null,addedAt:Date.now(),source:'sync'});
+    if(!kept.find(function(x){return x.id===id;})){
+      kept.push({id,slotKey:'today',type:'today',name:it.name,sub:it.category,done:false,blockId:null,addedAt:Date.now(),source:'sync'});
       changed=true;
     }
   });
-  if(changed){setV2Items(arr);if(activeVer()==='v2'&&document.getElementById('cl-v2')?.style.display!=='none')renderChecklistV2();}
+  if(changed){setV2Items(kept);if(activeVer()==='v2'&&document.getElementById('cl-v2')?.style.display!=='none')renderChecklistV2();}
 }
 
 // Heading priority for tie-breaking same-date overdue items (rule 2): daily → lecture → book → paper
@@ -4074,14 +4111,14 @@ function v2AutoFillFuture(){
 let _v2pSlot=null,_v2pDate=null;
 let _v2pSelected={}; // {id:{id,type,name,sub}} — pending multi-select
 
-const _V2_MULTISELECT_SLOTS=new Set(['book','paper','dontknow','freshness']);
+const _V2_MULTISELECT_SLOTS=new Set(['today','overdue','book','paper','dontknow','freshness']);
 
 function v2OpenPicker(slotKey,date){
   _v2pSlot=slotKey;_v2pDate=date||null;_v2pSelected={};
   const sl=V2_SLOTS.find(s=>s.key===slotKey);
   document.getElementById('v2-picker-title').textContent='Add '+(sl?sl.label:'item');
   // Search box only helps list-based pickers; custom free-text slots (e.g. Additional) get just one input
-  const _listSlots=['overdue','book','paper','dontknow','freshness'];
+  const _listSlots=['today','overdue','book','paper','dontknow','freshness'];
   const _searchEl=document.getElementById('v2-picker-search');
   _searchEl.style.display=_listSlots.includes(slotKey)?'':'none';
   _searchEl.value='';
@@ -4169,7 +4206,23 @@ function _v2RenderPBody(slotKey,date){
         html+='<div class="d-sect-hdr" style="color:var(--red)">'+cat+'</div>';
         items.forEach(function(it){
           const id='v2ov_'+slugify(it.name).slice(0,20);const added=inSlot(id);
-          html+='<div class="picker-row"'+(added?'':' onclick="v2PickItem(\''+id+'\',\'overdue\',\''+it.name.replace(/'/g,"\\'")+'\',\''+cat.replace(/'/g,"\\'")+'\');"')+'><div class="picker-cb'+(added?' sel':'')+'">✓</div><span class="picker-label">'+it.name+'</span><span style="font-size:.58rem;color:var(--red);margin-left:4px">'+it.daysOverdue+'d</span></div>';
+          const isSel=added||!!_v2pSelected[id];
+          const clickAttr=added?'':' onclick="v2ToggleSelect(\''+id.replace(/'/g,"\\'")+'\',\'overdue\',\''+it.name.replace(/'/g,"\\'")+'\',\''+cat.replace(/'/g,"\\'")+'\')"';
+          html+='<div class="picker-row" data-pid="'+id+'"'+clickAttr+(added?' style="opacity:.55;cursor:default"':'')+'><div class="picker-cb'+(isSel?' sel':'')+'">✓</div><span class="picker-label">'+it.name+'</span><span style="font-size:.58rem;color:var(--red);margin-left:4px">'+it.daysOverdue+'d</span></div>';
+        });
+      });
+    }
+  } else if(slotKey==='today'){
+    if(!D.todayItems||!D.todayItems.length){html='<div style="font-size:.72rem;color:var(--dim);padding:12px 0">Sync Sheet to load today\'s due items.</div>';}
+    else{
+      const grps={};D.todayItems.forEach(function(it){(grps[it.category]=grps[it.category]||[]).push(it);});
+      Object.entries(grps).forEach(function([cat,items]){
+        html+='<div class="d-sect-hdr" style="color:var(--orange)">'+cat+'</div>';
+        items.forEach(function(it){
+          const id='v2td_'+slugify(it.name).slice(0,20);const added=inSlot(id);
+          const isSel=added||!!_v2pSelected[id];
+          const clickAttr=added?'':' onclick="v2ToggleSelect(\''+id.replace(/'/g,"\\'")+'\',\'today\',\''+it.name.replace(/'/g,"\\'")+'\',\''+cat.replace(/'/g,"\\'")+'\')"';
+          html+='<div class="picker-row" data-pid="'+id+'"'+clickAttr+(added?' style="opacity:.55;cursor:default"':'')+'><div class="picker-cb'+(isSel?' sel':'')+'">✓</div><span class="picker-label">'+it.name+'</span></div>';
         });
       });
     }
@@ -4361,6 +4414,7 @@ function buildBlocksHTML(items){
 function buildClearanceForecastHTML(){
   return '<div class="cl-burn-table">'
     +'<div class="cl-burn-hdr"><span>Backlog</span><span>Remaining</span><span>Rate</span><span>Est. Clear Date</span></div>'
+    +burnRowHTML('📬','Due Today',          D.kpi.today,      getTarget('today',5),   'var(--orange)', 'today',5)
     +burnRowHTML('⚠️','Overdue Items',       D.kpi.overdue,    getTarget('overdue',3), 'var(--red)',    'overdue',3)
     +burnRowHTML('📖','Book Chapters',        D.kpi.bookTotal>0?D.kpi.bookTotal-D.kpi.bookDone:null, getTarget('book',2), 'var(--accent)','book',2)
     +burnRowHTML('📄','Papers',               D.kpi.paperTotal>0?D.kpi.paperTotal-D.kpi.paperDone:null, getTarget('paper',1), 'var(--purple)','paper',1)
