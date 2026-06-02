@@ -552,7 +552,7 @@ body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color
 .plan-cell-prog{width:100%;height:3px;border-radius:99px;background:var(--border);overflow:hidden;margin-top:2px;}
 .plan-cell-prog-fill{height:100%;border-radius:99px;transition:width .3s ease;}
 /* Expansion panel — spans all 7 grid columns */
-.plan-exp{grid-column:1 / -1;background:var(--card-alt);border:1px solid var(--border-lt);border-radius:10px;padding:14px 14px 12px;margin:2px 0 4px;}
+.plan-exp{grid-column:1 / -1;background:var(--card-alt);border:1px solid var(--border-lt);border-radius:10px;padding:14px 14px 12px;margin:2px 0 4px;min-width:0;max-width:100%;overflow:hidden;}
 .plan-exp-hdr{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
 .plan-exp-hdr-label{font-size:.8rem;font-weight:800;letter-spacing:-.02em;color:var(--text);}
 .plan-exp-hdr-sub{font-size:.62rem;color:var(--muted);}
@@ -961,6 +961,9 @@ function slugify(s){return String(s).toLowerCase().replace(/[^a-z0-9]+/g,'_').sl
 // DATA
 // ════════════════════════════════════════════════════════
 const SHEET_ID = '1u58YRfh_mT8k7TmGiG_UKzxcS5PDL8JchCm0rjvV8_Y';
+
+// Paste your deployed Apps Script Web App URL here after setup (see sw-writeback.gs)
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbz4F-OazCkGZHjVprgituMVkljT5CfQdl-4Ywh8iQ3WnTfnuLVAWrVnYJ7HaOBY7m1r/exec';
 
 const D = {
   kpi: { overdue:66, today:3, bookRate:0, paperRate:0, bookDone:0, bookTotal:0, paperDone:0, paperTotal:0, cases:43, dontKnow:7 },
@@ -1726,6 +1729,7 @@ function _planRefreshV2IfNeeded(dk){ /* checklist tab removed — no-op */ }
 function v2ToggleItemForDate(id,dk){
   const arr=getV2Items(dk);const it=arr.find(function(x){return x.id===id;});
   if(!it)return;it.done=!it.done;setV2Items(arr,dk);
+  sheetWriteBack(it);
   _planRefreshV2IfNeeded(dk);
   renderPlanning();
 }
@@ -1754,7 +1758,7 @@ function _planDaySlotCard(sl, dk, items, blocks){
     const blkBadge=blk
       ?'<span class="slot-blk" style="color:'+blk.color+';border-color:'+blk.color+'" onclick="v2CycleBlockForDate(\''+it.id+'\',\''+dk+'\');event.stopPropagation()" title="Click to change">'+blk.label+'</span>'
       :'<span class="slot-blk" style="color:var(--dim);border-color:var(--border)" onclick="v2CycleBlockForDate(\''+it.id+'\',\''+dk+'\');event.stopPropagation()" title="Assign block">+block</span>';
-    const showSub=it.sub&&(it.slotKey==='book'||it.slotKey==='paper');
+    const showSub=it.sub&&(it.slotKey==='book'||it.slotKey==='paper'||it.slotKey==='today');
     const nameHTML='<span class="slot-item-name'+(it.done?' done':'')+'">'
       +'<span class="slot-item-main">'+it.name+'</span>'
       +(showSub?'<span class="slot-item-sub">'+it.sub+'</span>':'')
@@ -2437,6 +2441,30 @@ function updateRateKPIs() {
 }
 
 // ════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
+// SHEET WRITE-BACK — fires when a checkbox is checked
+// Routes to the Apps Script Web App (GAS_URL) which updates
+// the corresponding Google Sheet cell.
+// ════════════════════════════════════════════════════════
+function sheetWriteBack(it) {
+  if (!it.done) return;          // only write on CHECK, not uncheck
+  if (!GAS_URL) return;          // not configured yet
+  var action, params;
+  if (it.slotKey === 'today' || it.slotKey === 'overdue') {
+    // Log tab — mark column D true
+    params = 'action=checkLog&name=' + encodeURIComponent(it.name);
+  } else if (it.slotKey === 'book') {
+    // All Book tab — write today's date to column G
+    params = 'action=dateBook&name=' + encodeURIComponent(it.name);
+  } else if (it.slotKey === 'paper') {
+    // All Paper tab — write today's date to column G
+    params = 'action=datePaper&name=' + encodeURIComponent(it.name);
+  } else {
+    return; // other slot types (dontknow, freshness) — no write-back needed
+  }
+  fetch(GAS_URL + '?' + params, {mode:'no-cors'}).catch(function(){});
+}
+
 // LOG SYNC — count unique overdue & today items from Log tab
 // Col[0]=name  Col[1]=date  Col[2]=category  Col[3]=done(true/false)
 // ════════════════════════════════════════════════════════
@@ -3901,6 +3929,7 @@ function v2AddItem(slotKey,item,date){
 function v2ToggleItem(id){
   const arr=getV2Items();const it=arr.find(x=>x.id===id);
   if(!it)return;it.done=!it.done;setV2Items(arr);
+  sheetWriteBack(it);
   renderChecklistV2();
   if(document.getElementById('tab-planning')?.style.display!=='none')renderPlanning();
 }
@@ -4292,7 +4321,7 @@ function renderChecklistV2(){
       const blkBadge=blk
         ?'<span class="slot-blk" style="color:'+blk.color+';border-color:'+blk.color+'" onclick="v2CycleBlock(\''+it.id+'\')" title="Click to change">'+blk.label+'</span>'
         :'<span class="slot-blk" style="color:var(--dim);border-color:var(--border)" onclick="v2CycleBlock(\''+it.id+'\')" title="Assign to time block">+block</span>';
-      const showSub=it.sub&&(it.slotKey==='book'||it.slotKey==='paper');
+      const showSub=it.sub&&(it.slotKey==='book'||it.slotKey==='paper'||it.slotKey==='today');
       const nameHTML='<span class="slot-item-name'+(it.done?' done':'')+'">'
         +'<span class="slot-item-main">'+it.name+'</span>'
         +(showSub?'<span class="slot-item-sub">'+it.sub+'</span>':'')
