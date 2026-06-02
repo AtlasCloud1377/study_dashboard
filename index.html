@@ -2473,10 +2473,12 @@ function sheetWriteBack(it, dk) {
       ? 'action=datePaper&name='  + encodeURIComponent(it.name)
       : 'action=clearPaper&name=' + encodeURIComponent(it.name);
   } else if (it.slotKey === 'freshness') {
-    // Modality tab col F — write today's date, or clear
-    params = it.done
-      ? 'action=dateFreshness&name='  + encodeURIComponent(it.name)
-      : 'action=clearFreshness&name=' + encodeURIComponent(it.name);
+    // Modality tab col F — write today's date, or clear.
+    // We know the exact sheet row (captured at sync), so just send it.
+    // name is included only as a fallback for old items synced before row existed.
+    params = (it.done ? 'action=dateFreshness' : 'action=clearFreshness')
+           + '&row='  + encodeURIComponent(it.row || '')
+           + '&name=' + encodeURIComponent(it.name);
   } else {
     return; // dontknow — no write-back
   }
@@ -2585,14 +2587,16 @@ function syncScenarios() {
       if(iStatus < 0) iStatus = 1;
 
       const fresh=[], fading=[], stale=[];
-      for(const row of rows) {
+      for(let ri=0; ri<rows.length; ri++) {
+        const row = rows[ri];
         if(!row?.c) continue;
         const name   = row.c[iName]?.v;
         const status = String(row.c[iStatus]?.v || '').toLowerCase();
         const modal  = iModal >= 0 ? String(row.c[iModal]?.v || '') : '';
         if(!name || typeof name !== 'string') continue;
         if(status==='status' || name.toLowerCase()==='name' || name.toLowerCase()==='scenario') continue;
-        const item = { name, modal };
+        // Sheet row number: gviz strips the header, so data row ri = sheet row ri+2.
+        const item = { name, modal, row: ri + 2 };
         if(status.includes('stal'))       stale.push(item);
         else if(status.includes('fad'))   fading.push(item);
         else if(status.includes('fresh')) fresh.push(item);
@@ -4034,9 +4038,9 @@ function v2FilterPicker(q){
   });
 }
 // Toggle a row in/out of the pending selection (for book/paper multi-select)
-function v2ToggleSelect(id,type,name,sub){
+function v2ToggleSelect(id,type,name,sub,row){
   if(_v2pSelected[id]){delete _v2pSelected[id];}
-  else{_v2pSelected[id]={id,type,name,sub:sub||''};}
+  else{_v2pSelected[id]={id,type,name,sub:sub||'',row:row||undefined};}
   // Update just the checkbox in DOM — no full re-render needed
   const cb=document.querySelector('.picker-row[data-pid="'+id+'"] .picker-cb');
   if(cb)cb.classList.toggle('sel',!!_v2pSelected[id]);
@@ -4180,18 +4184,18 @@ function _v2RenderPBody(slotKey,date){
       if(stale.length){
         html+='<div class="d-sect-hdr" style="color:var(--red)">⚠️ Stale ('+stale.length+')</div>';
         stale.forEach(function(it){
-          const id='v2fr_st_'+slugify(it.name).slice(0,20);const added=inSlot(id);
+          const id='v2fr_st_'+slugify(it.name).slice(0,20)+'_r'+(it.row||0);const added=inSlot(id);
           const isSel=added||!!_v2pSelected[id];
-          const clickAttr=added?'':' onclick="v2ToggleSelect(\''+id.replace(/'/g,"\\'")+'\',\'freshness\',\''+it.name.replace(/'/g,"\\'")+'\',\''+(it.modal||'').replace(/'/g,"\\'")+'\')"';
+          const clickAttr=added?'':' onclick="v2ToggleSelect(\''+id.replace(/'/g,"\\'")+'\',\'freshness\',\''+it.name.replace(/'/g,"\\'")+'\',\''+(it.modal||'').replace(/'/g,"\\'")+'\','+(it.row||0)+')"';
           html+='<div class="picker-row" data-pid="'+id+'"'+clickAttr+(added?' style="opacity:.55;cursor:default"':'')+'><div class="picker-cb'+(isSel?' sel':'')+'">✓</div><span class="picker-label">'+it.name+'</span>'+(it.modal?'<span style="font-size:.58rem;color:var(--dim);margin-left:4px">'+it.modal+'</span>':'')+'</div>';
         });
       }
       if(fading.length){
         html+='<div class="d-sect-hdr" style="color:var(--amber)">📉 Fading ('+fading.length+')</div>';
         fading.forEach(function(it){
-          const id='v2fr_fd_'+slugify(it.name).slice(0,20);const added=inSlot(id);
+          const id='v2fr_fd_'+slugify(it.name).slice(0,20)+'_r'+(it.row||0);const added=inSlot(id);
           const isSel=added||!!_v2pSelected[id];
-          const clickAttr=added?'':' onclick="v2ToggleSelect(\''+id.replace(/'/g,"\\'")+'\',\'freshness\',\''+it.name.replace(/'/g,"\\'")+'\',\''+(it.modal||'').replace(/'/g,"\\'")+'\')"';
+          const clickAttr=added?'':' onclick="v2ToggleSelect(\''+id.replace(/'/g,"\\'")+'\',\'freshness\',\''+it.name.replace(/'/g,"\\'")+'\',\''+(it.modal||'').replace(/'/g,"\\'")+'\','+(it.row||0)+')"';
           html+='<div class="picker-row" data-pid="'+id+'"'+clickAttr+(added?' style="opacity:.55;cursor:default"':'')+'><div class="picker-cb'+(isSel?' sel':'')+'">✓</div><span class="picker-label">'+it.name+'</span>'+(it.modal?'<span style="font-size:.58rem;color:var(--dim);margin-left:4px">'+it.modal+'</span>':'')+'</div>';
         });
       }
