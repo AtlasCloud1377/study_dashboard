@@ -1762,7 +1762,7 @@ function _planDaySlotCard(sl, dk, items, blocks){
     const blkBadge=blk
       ?'<span class="slot-blk" style="color:'+blk.color+';border-color:'+blk.color+'" onclick="v2CycleBlockForDate(\''+it.id+'\',\''+dk+'\');event.stopPropagation()" title="Click to change">'+blk.label+'</span>'
       :'<span class="slot-blk" style="color:var(--dim);border-color:var(--border)" onclick="v2CycleBlockForDate(\''+it.id+'\',\''+dk+'\');event.stopPropagation()" title="Assign block">+block</span>';
-    const showSub=it.sub&&(it.slotKey==='book'||it.slotKey==='paper'||it.slotKey==='today');
+    const showSub=it.sub&&(it.slotKey==='book'||it.slotKey==='paper'||it.slotKey==='today'||it.slotKey==='overdue');
     const nameHTML='<span class="slot-item-name'+(it.done?' done':'')+'">'
       +'<span class="slot-item-main">'+it.name+'</span>'
       +(showSub?'<span class="slot-item-sub">'+it.sub+'</span>':'')
@@ -2546,6 +2546,7 @@ function syncLog() {
       D.futureItems  = futureMap;
 
       v2AutoFillToday();
+      v2AutoFillOverdue();
       v2AutoFillFuture();
 
       D.kpi.overdue = D.overdueItems.length;
@@ -3986,6 +3987,63 @@ function v2AutoFillToday(){
   if(changed){setV2Items(arr);if(activeVer()==='v2'&&document.getElementById('cl-v2')?.style.display!=='none')renderChecklistV2();}
 }
 
+// Heading priority for tie-breaking same-date overdue items (rule 2): daily → lecture → book → paper
+function _v2OverdueCatRank(c){
+  const k=String(c||'').toLowerCase();
+  if(k.includes('daily'))return 0;
+  if(k.includes('lecture'))return 1;
+  if(k.includes('book'))return 2;
+  if(k.includes('paper'))return 3;
+  return 9;
+}
+// Ordered overdue list: oldest first; within the same due date, rotate across headings
+// so we pick from different headings before repeating one.
+function _v2OverdueOrder(){
+  const byDays=new Map();
+  (D.overdueItems||[]).forEach(function(it){
+    if(!byDays.has(it.daysOverdue))byDays.set(it.daysOverdue,[]);
+    byDays.get(it.daysOverdue).push(it);
+  });
+  const days=[...byDays.keys()].sort(function(a,b){return b-a;}); // most days overdue (oldest) first
+  const out=[];
+  days.forEach(function(d){
+    const byCat=new Map();
+    byDays.get(d).forEach(function(it){
+      const r=_v2OverdueCatRank(it.category);
+      if(!byCat.has(r))byCat.set(r,[]);
+      byCat.get(r).push(it);
+    });
+    const cats=[...byCat.keys()].sort(function(a,b){return a-b;});
+    let any=true;
+    while(any){any=false;cats.forEach(function(c){const l=byCat.get(c);if(l.length){out.push(l.shift());any=true;}});}
+  });
+  return out;
+}
+// Auto-fill TODAY's "Clear Overdue" slot up to the clearance rate (overdue target).
+// Keeps done items + manual picks; refreshes the not-yet-done auto picks on each sync.
+function v2AutoFillOverdue(){
+  if(!D.overdueItems)return;
+  const N=getTarget('overdue',3);
+  const arr=getV2Items();
+  const kept=arr.filter(function(x){return!(x.slotKey==='overdue'&&x.source==='sync'&&!x.done);});
+  let changed=kept.length!==arr.length;
+  const names=new Set(kept.filter(function(x){return x.slotKey==='overdue';}).map(function(x){return x.name;}));
+  let count=names.size;
+  const order=_v2OverdueOrder();
+  for(let i=0;i<order.length&&count<N;i++){
+    const it=order[i];
+    if(names.has(it.name))continue;
+    const id='v2ov_'+slugify(it.name).slice(0,20);
+    kept.push({id,slotKey:'overdue',type:'overdue',name:it.name,sub:it.category,done:false,blockId:null,addedAt:Date.now(),source:'sync'});
+    names.add(it.name);count++;changed=true;
+  }
+  if(changed){
+    setV2Items(kept);
+    if(activeVer()==='v2'&&document.getElementById('cl-v2')?.style.display!=='none')renderChecklistV2();
+    if(document.getElementById('tab-planning')?.style.display!=='none')renderPlanning();
+  }
+}
+
 function v2AutoFillFuture(){
   // Writes sheet-sourced future due items into each future date's localStorage
   // so they appear in the Planning calendar's Today Due slot automatically.
@@ -4357,7 +4415,7 @@ function renderChecklistV2(){
       const blkBadge=blk
         ?'<span class="slot-blk" style="color:'+blk.color+';border-color:'+blk.color+'" onclick="v2CycleBlock(\''+it.id+'\')" title="Click to change">'+blk.label+'</span>'
         :'<span class="slot-blk" style="color:var(--dim);border-color:var(--border)" onclick="v2CycleBlock(\''+it.id+'\')" title="Assign to time block">+block</span>';
-      const showSub=it.sub&&(it.slotKey==='book'||it.slotKey==='paper'||it.slotKey==='today');
+      const showSub=it.sub&&(it.slotKey==='book'||it.slotKey==='paper'||it.slotKey==='today'||it.slotKey==='overdue');
       const nameHTML='<span class="slot-item-name'+(it.done?' done':'')+'">'
         +'<span class="slot-item-main">'+it.name+'</span>'
         +(showSub?'<span class="slot-item-sub">'+it.sub+'</span>':'')
