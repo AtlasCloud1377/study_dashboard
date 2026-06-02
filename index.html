@@ -520,11 +520,11 @@ body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color
 .plan-cal-title{font-size:.88rem;font-weight:800;letter-spacing:-.02em;}
 .plan-nav-btn{width:28px;height:28px;border-radius:7px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:.85rem;display:flex;align-items:center;justify-content:center;transition:.15s;}
 .plan-nav-btn:hover{background:var(--card-hov);border-color:var(--border-lt);color:var(--text);}
-.plan-dow-row{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px;}
+.plan-dow-row{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin-bottom:4px;}
 .plan-dow{font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--dim);text-align:center;padding:4px 0;}
 /* Grid uses 7 explicit columns so expansion panels can span all 7 */
-.plan-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
-.plan-cell{border-radius:8px;border:1px solid var(--border);padding:7px 8px;cursor:pointer;transition:border-color .15s,background .15s;display:flex;flex-direction:column;gap:4px;position:relative;min-height:62px;}
+.plan-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;}
+.plan-cell{border-radius:8px;border:1px solid var(--border);padding:7px 8px;cursor:pointer;transition:border-color .15s,background .15s;display:flex;flex-direction:column;gap:4px;position:relative;min-height:62px;min-width:0;overflow:hidden;}
 .plan-cell:hover{border-color:var(--border-lt);background:var(--card-hov);}
 .plan-cell.plan-open{border-color:var(--accent);background:rgba(56,189,248,.06);}
 .plan-cell.plan-empty{background:transparent;border-color:transparent;cursor:default;pointer-events:none;}
@@ -536,7 +536,7 @@ body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color
 .plan-cell.plan-today .plan-cell-day{color:var(--accent);}
 .plan-cell-badge{font-size:.52rem;font-weight:700;padding:1px 5px;border-radius:99px;line-height:1.4;flex-shrink:0;}
 /* Item list inside cell */
-.plan-cell-items{display:flex;flex-direction:column;gap:1px;flex:1;}
+.plan-cell-items{display:flex;flex-direction:column;gap:1px;flex:1;min-width:0;}
 .plan-cell-item{font-size:.58rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.45;padding:0 1px;}
 .plan-cell-item.done{color:var(--dim);text-decoration:line-through;}
 .plan-cell-more{font-size:.54rem;color:var(--accent);padding:1px;cursor:default;}
