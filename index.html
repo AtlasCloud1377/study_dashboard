@@ -1841,7 +1841,7 @@ function _planDayV2HTML(dk){
     +'<div style="font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px">Daily Tasks</div>'
     +'<div class="plan-day-slots plan-day-slots-2col">'+dailyHTML+'</div>'
     +'<div style="font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:10px 0 6px">Weekly Goals</div>'
-    +'<div class="plan-day-slots">'+weeklyHTML+'</div>'
+    +'<div class="plan-day-slots plan-day-slots-2col">'+weeklyHTML+'</div>'
     +'</div>';
 }
 
@@ -2923,7 +2923,7 @@ const TBS_GOALS = [
   {key:'overdue',   label:'Clear Overdue',        icon:'⚠️',  type:'daily',  minsPerItem:3},
   {key:'book',      label:'Book Chapters',        icon:'📖', type:'daily',  minsPerItem:15},
   {key:'paper',     label:'Papers',               icon:'📄', type:'daily',  minsPerItem:20},
-  {key:'active',    label:'Active Work Update',   icon:'🎯', type:'daily',  minsPerItem:10},
+  {key:'active',    label:'Additional',   icon:'🎯', type:'daily',  minsPerItem:10},
   {key:'cases',     label:'Cases Encountered',    icon:'🩻', type:'weekly', minsPerItem:5},
   {key:'dontknow',  label:"Don't Know Topics",    icon:'❓', type:'weekly', minsPerItem:8},
   {key:'freshness', label:'Modality Freshness',   icon:'🧠', type:'weekly', minsPerItem:5},
@@ -3438,7 +3438,7 @@ function renderChecklist() {
         <div class="cl-item" style="border-bottom:none">
           <div class="cl-icon">🎯</div>
           <div class="cl-body">
-            <div class="cl-label">Active Work Update${dActive?' <span style="color:var(--green);font-size:.6rem">✓</span>':''}</div>
+            <div class="cl-label">Additional${dActive?' <span style="color:var(--green);font-size:.6rem">✓</span>':''}</div>
             <div class="cl-sub">Log progress on current tasks</div>
           </div>
           <div class="cl-check${dActive?' done':''}" onclick="toggleActive(this)">${dActive?'✓':''}</div>
@@ -3885,7 +3885,7 @@ const V2_SLOTS=[
   {key:'overdue',   label:'Clear Overdue',       icon:'⚠️',autoFill:false,defaultTarget:3,   color:'var(--red)',    minsEach:5, period:'daily'},
   {key:'book',      label:'Book Chapter',        icon:'📖',autoFill:false,defaultTarget:1,   color:'var(--accent)', minsEach:15,period:'daily'},
   {key:'paper',     label:'Papers',              icon:'📄',autoFill:false,defaultTarget:1,   color:'var(--purple)', minsEach:20,period:'daily'},
-  {key:'active',    label:'Active Work Update',  icon:'🎯',autoFill:false,defaultTarget:1,   color:'var(--green)',  minsEach:10,period:'daily'},
+  {key:'active',    label:'Additional',  icon:'🎯',autoFill:false,defaultTarget:1,   color:'var(--green)',  minsEach:10,period:'daily'},
   {key:'dontknow',  label:"Don't Know Topics",   icon:'❓',autoFill:false,defaultTarget:3,   color:'var(--purple)', minsEach:8, period:'weekly'},
   {key:'freshness', label:'Modality Freshness',  icon:'🧠',autoFill:false,defaultTarget:3,   color:'var(--green)',  minsEach:5, period:'weekly'},
 ];
@@ -4022,7 +4022,11 @@ function v2OpenPicker(slotKey,date){
   _v2pSlot=slotKey;_v2pDate=date||null;_v2pSelected={};
   const sl=V2_SLOTS.find(s=>s.key===slotKey);
   document.getElementById('v2-picker-title').textContent='Add '+(sl?sl.label:'item');
-  document.getElementById('v2-picker-search').value='';
+  // Search box only helps list-based pickers; custom free-text slots (e.g. Additional) get just one input
+  const _listSlots=['overdue','book','paper','dontknow','freshness'];
+  const _searchEl=document.getElementById('v2-picker-search');
+  _searchEl.style.display=_listSlots.includes(slotKey)?'':'none';
+  _searchEl.value='';
   _v2RenderPBody(slotKey,date);
   _v2UpdatePickerFoot();
   document.getElementById('v2-picker-modal').style.display='flex';
