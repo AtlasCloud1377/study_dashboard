@@ -1729,7 +1729,7 @@ function _planRefreshV2IfNeeded(dk){ /* checklist tab removed — no-op */ }
 function v2ToggleItemForDate(id,dk){
   const arr=getV2Items(dk);const it=arr.find(function(x){return x.id===id;});
   if(!it)return;it.done=!it.done;setV2Items(arr,dk);
-  sheetWriteBack(it);
+  sheetWriteBack(it,dk);
   _planRefreshV2IfNeeded(dk);
   renderPlanning();
 }
@@ -2446,21 +2446,34 @@ function updateRateKPIs() {
 // Routes to the Apps Script Web App (GAS_URL) which updates
 // the corresponding Google Sheet cell.
 // ════════════════════════════════════════════════════════
-function sheetWriteBack(it) {
-  if (!it.done) return;          // only write on CHECK, not uncheck
+function sheetWriteBack(it, dk) {
   if (!GAS_URL) return;          // not configured yet
-  var action, params;
-  if (it.slotKey === 'today' || it.slotKey === 'overdue') {
-    // Log tab — mark column D true
-    params = 'action=checkLog&name=' + encodeURIComponent(it.name);
+  var params;
+  // dk = calendar date key ('YYYY-MM-DD') so we match the exact Log row by date
+  var dateStr = dk || todayKey();
+
+  if (it.slotKey === 'today') {
+    // Log tab col D — match by name + exact date in col B
+    params = (it.done ? 'action=checkLog' : 'action=uncheckLog')
+           + '&name=' + encodeURIComponent(it.name)
+           + '&date=' + encodeURIComponent(dateStr);
+  } else if (it.slotKey === 'overdue') {
+    // Log tab col D — match by name + any past-due row
+    params = (it.done ? 'action=checkLog' : 'action=uncheckLog')
+           + '&name=' + encodeURIComponent(it.name)
+           + '&overdue=1';
   } else if (it.slotKey === 'book') {
-    // All Book tab — write today's date to column G
-    params = 'action=dateBook&name=' + encodeURIComponent(it.name);
+    // All Book col G — write today's date, or clear
+    params = it.done
+      ? 'action=dateBook&name='  + encodeURIComponent(it.name)
+      : 'action=clearBook&name=' + encodeURIComponent(it.name);
   } else if (it.slotKey === 'paper') {
-    // All Paper tab — write today's date to column G
-    params = 'action=datePaper&name=' + encodeURIComponent(it.name);
+    // All Paper col G — write today's date, or clear
+    params = it.done
+      ? 'action=datePaper&name='  + encodeURIComponent(it.name)
+      : 'action=clearPaper&name=' + encodeURIComponent(it.name);
   } else {
-    return; // other slot types (dontknow, freshness) — no write-back needed
+    return; // dontknow, freshness — no write-back
   }
   fetch(GAS_URL + '?' + params, {mode:'no-cors'}).catch(function(){});
 }
@@ -3929,7 +3942,7 @@ function v2AddItem(slotKey,item,date){
 function v2ToggleItem(id){
   const arr=getV2Items();const it=arr.find(x=>x.id===id);
   if(!it)return;it.done=!it.done;setV2Items(arr);
-  sheetWriteBack(it);
+  sheetWriteBack(it,todayKey());
   renderChecklistV2();
   if(document.getElementById('tab-planning')?.style.display!=='none')renderPlanning();
 }
