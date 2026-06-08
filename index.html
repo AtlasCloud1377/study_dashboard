@@ -444,11 +444,13 @@ body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color
 .tl2-scroll::-webkit-scrollbar-track{background:transparent;}
 .tl2-scroll::-webkit-scrollbar-thumb{background:var(--border-lt);border-radius:2px;}
 .tl2-root{position:relative;height:148px;margin:8px 0 12px;}
-.tl2-card{background:var(--card);border:2px solid;border-radius:8px;padding:6px 10px;position:absolute;box-sizing:border-box;overflow:visible;cursor:default;}
+.tl2-card{background:var(--card);border:2px solid;border-radius:8px;padding:6px 10px;position:absolute;box-sizing:border-box;overflow:visible;cursor:pointer;z-index:1;transition:z-index 0s,box-shadow .15s;}
+.tl2-card:hover{z-index:20;box-shadow:0 4px 20px rgba(0,0,0,.55);}
+.tl2-card.tl-top{z-index:20;box-shadow:0 4px 20px rgba(0,0,0,.55);}
 .tl2-tip{position:absolute;left:0;min-width:160px;max-width:220px;background:var(--card);border:1px solid var(--border-lt);border-radius:8px;padding:8px 10px;z-index:30;display:none;box-shadow:0 8px 24px rgba(0,0,0,.5);}
 .tl2-card.top .tl2-tip{top:calc(100% + 4px);}
 .tl2-card.bot .tl2-tip{bottom:calc(100% + 4px);}
-.tl2-card:hover .tl2-tip{display:block;}
+.tl2-card:hover .tl2-tip,.tl2-card.tl-top .tl2-tip{display:block;}
 /* ── V2 Progress bar ── */
 .v2-pbar{height:4px;background:var(--border);border-radius:99px;overflow:hidden;margin-bottom:4px;}
 .v2-pfill{height:100%;border-radius:99px;transition:width .4s ease;}
@@ -767,6 +769,7 @@ body.mode-refined #dontknow-kpi-badge{background:rgba(167,139,250,.12) !importan
 <div class="tab-bar">
   <button id="tabn-dashboard" class="tab-btn tab-active" onclick="switchTab('dashboard')">📊 Dashboard</button>
   <button id="tabn-planning" class="tab-btn" onclick="switchTab('planning')">🗓 Planning</button>
+  <button id="tabn-calendar" class="tab-btn" onclick="switchTab('calendar')">📅 Calendar</button>
 </div>
 
 <div id="tab-dashboard">
@@ -936,6 +939,11 @@ body.mode-refined #dontknow-kpi-badge{background:rgba(167,139,250,.12) !importan
 <!-- ── Planning Tab ── -->
 <div id="tab-planning" style="display:none">
   <div id="plan-root"></div>
+</div>
+
+<!-- ── Calendar Tab ── -->
+<div id="tab-calendar" style="display:none">
+  <div id="cal-root" style="padding:16px;max-width:960px;margin:0 auto"></div>
 </div>
 
 <!-- ── Drawer ── -->
@@ -2802,12 +2810,13 @@ function syncNow(btn) {
 // TAB SWITCHING
 // ════════════════════════════════════════════════════════
 function switchTab(name) {
-  ['dashboard','planning'].forEach(t => {
+  ['dashboard','planning','calendar'].forEach(t => {
     document.getElementById('tab-'+t).style.display = (t === name) ? '' : 'none';
     const btn = document.getElementById('tabn-'+t);
     if(btn) btn.classList.toggle('tab-active', t === name);
   });
   if(name === 'planning') renderPlanning();
+  if(name === 'calendar') renderCalendarTab();
 }
 
 // ════════════════════════════════════════════════════════
@@ -3267,6 +3276,45 @@ function clearHistory(){
   if(!confirm('Clear all history? This cannot be undone.'))return;
   setHistory([]);renderChecklist();
 }
+
+// ── Auto-save history at 2AM rollover ──────────────────────
+function autoSaveDay(){
+  // At 2AM, todayKey() has rolled to the new day — compute the key that just ended
+  const newKey=todayKey();
+  const [y,m,d]=newKey.split('-').map(Number);
+  const prev=new Date(y,m-1,d); prev.setDate(prev.getDate()-1);
+  const oldKey=prev.getFullYear()+'-'+String(prev.getMonth()+1).padStart(2,'0')+'-'+String(prev.getDate()).padStart(2,'0');
+  // Read that day's pipeline
+  const pl=JSON.parse(localStorage.getItem(LS+'pipeline_'+oldKey)||'[]');
+  if(!pl.length) return; // nothing to save
+  // Skip if already saved manually today
+  const hist=getHistory();
+  if(hist.find(function(h){return h.date===oldKey;})) return;
+  // Build entry
+  const [oy,om,od]=oldKey.split('-').map(Number);
+  const dateObj=new Date(oy,om-1,od);
+  const dateStr=dateObj.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  hist.unshift({
+    date:oldKey, dateStr,
+    total:pl.length,
+    doneCount:pl.filter(function(x){return x.done;}).length,
+    tasks:pl.map(function(x){return {name:x.name,type:x.type,sub:x.sub||'',category:x.category||'',done:x.done};}),
+    savedAt:Date.now(),
+    autoSaved:true
+  });
+  setHistory(hist.slice(0,90));
+}
+function scheduleAutoSave(){
+  const now=new Date();
+  const next2am=new Date(now);
+  next2am.setHours(2,0,0,0);
+  if(now>=next2am) next2am.setDate(next2am.getDate()+1);
+  setTimeout(function(){
+    autoSaveDay();
+    scheduleAutoSave(); // reschedule for next night
+  }, next2am-now);
+}
+scheduleAutoSave();
 function resetChecklist(){
   if(!confirm('Reset today\'s checklist? This removes all sub-items, resets daily counts, and clears dashboard drawer checkboxes.'))return;
   setPipeline([]);
@@ -4001,10 +4049,40 @@ document.addEventListener('mousemove',function(e){
 document.addEventListener('mouseup',function(){
   const d=window._tl2Drag;if(!d)return;
   window._tl2Drag=null;
-  const s=getTBSStarts();s[d.blockId]=d.curMin;setTBSStarts(s);
-  if(activeVer()==='v2')renderChecklistV2();
-  if(document.getElementById('tab-planning')?.style.display!=='none')renderPlanning();
+  if(d.blockId==='__exercise__'){
+    // Exercise dragged in Calendar tab — update position, re-render
+    exSetPos(d.curMin);
+    if(activeVer()==='v2') renderChecklistV2();
+    if(document.getElementById('tab-calendar')?.style.display!=='none') renderCalendarTab();
+  } else if(d.blockId.startsWith('__ob_')){
+    // Other block dragged in Calendar tab — update template start time
+    const obId=d.blockId.slice(5);
+    const obs=getOtherBlks();
+    const ob=obs.find(function(x){return x.id===obId;});
+    if(ob){ ob.startMin=d.curMin; setOtherBlks(obs); }
+    if(activeVer()==='v2') renderChecklistV2();
+    if(document.getElementById('tab-calendar')?.style.display!=='none') renderCalendarTab();
+  } else {
+    // Study block dragged
+    const s=getTBSStarts();s[d.blockId]=d.curMin;setTBSStarts(s);
+    if(activeVer()==='v2') renderChecklistV2();
+    if(document.getElementById('tab-planning')?.style.display!=='none') renderPlanning();
+    if(document.getElementById('tab-calendar')?.style.display!=='none') renderCalendarTab();
+  }
 });
+
+// Click any .tl2-card to bring it to front (within its timeline root)
+document.addEventListener('click',function(e){
+  var card=e.target.closest('.tl2-card');
+  if(!card)return;
+  var root=card.closest('.tl2-root');
+  if(!root)return;
+  var isAlreadyTop=card.classList.contains('tl-top');
+  // Remove tl-top from all cards in this root
+  root.querySelectorAll('.tl2-card').forEach(function(c){c.classList.remove('tl-top');});
+  // Toggle: clicking the top card collapses it back; clicking another raises it
+  if(!isAlreadyTop) card.classList.add('tl-top');
+},true); // capture phase so it fires before stopPropagation on children
 
 function v2AddItem(slotKey,item,date){
   const arr=getV2Items(date);
@@ -4111,26 +4189,30 @@ function v2AutoFillOverdue(){
 }
 
 function v2AutoFillFuture(){
-  // Writes sheet-sourced future due items into each future date's localStorage
-  // so they appear in the Planning calendar's Today Due slot automatically.
+  // Writes the goal-set (rate-capped, category-mixed) of future due items into each
+  // future date's localStorage — same logic as v2AutoFillToday.
   if(!D.futureItems||!Object.keys(D.futureItems).length)return;
   const tk=todayKey();
+  const N=getTarget('today',5);
   let anyChanged=false;
   Object.entries(D.futureItems).forEach(function([dk,sheetItems]){
     if(dk<=tk)return; // skip past / today (handled by v2AutoFillToday)
+    // Pick top N items mixed across categories
+    const pick=_v2MixByCategory(sheetItems.slice()).slice(0,N);
+    const pickIds=new Set(pick.map(function(it){return 'v2td_'+slugify(it.name).slice(0,20);}));
     const arr=getV2Items(dk);
-    // Remove stale sync-sourced 'today' items so re-sync stays accurate
-    const cleaned=arr.filter(function(x){return!(x.slotKey==='today'&&x.source==='sync');});
-    let changed=cleaned.length!==arr.length;
-    // Add fresh items from sheet
-    sheetItems.forEach(function(it){
+    // Drop sync-sourced today items outside the goal-set (keep done + manual picks)
+    const kept=arr.filter(function(x){return!(x.slotKey==='today'&&x.source==='sync'&&!x.done&&!pickIds.has(x.id));});
+    let changed=kept.length!==arr.length;
+    // Add goal-set items not yet present
+    pick.forEach(function(it){
       const id='v2td_'+slugify(it.name).slice(0,20);
-      if(!cleaned.find(function(x){return x.id===id;})){
-        cleaned.push({id,slotKey:'today',type:'today',name:it.name,sub:it.category,done:false,blockId:null,addedAt:Date.now(),source:'sync'});
+      if(!kept.find(function(x){return x.id===id;})){
+        kept.push({id,slotKey:'today',type:'today',name:it.name,sub:it.category,done:false,blockId:null,addedAt:Date.now(),source:'sync'});
         changed=true;
       }
     });
-    if(changed){setV2Items(cleaned,dk);anyChanged=true;}
+    if(changed){setV2Items(kept,dk);anyChanged=true;}
   });
   if(anyChanged&&document.getElementById('tab-planning')?.style.display!=='none')
     renderPlanning();
@@ -4188,6 +4270,13 @@ function v2OpenPicker(slotKey,date){
   _searchEl.value='';
   _v2RenderPBody(slotKey,date);
   _v2UpdatePickerFoot();
+  // Show total item count next to the title
+  const _rowCount=document.querySelectorAll('#v2-picker-body .picker-row').length;
+  const _titleEl=document.getElementById('v2-picker-title');
+  if(_titleEl&&_rowCount>0){
+    _titleEl.innerHTML=(sl?sl.label:'Items')
+      +' <span style="font-size:.6rem;font-weight:400;color:var(--muted);margin-left:6px">'+_rowCount+' item'+(_rowCount!==1?'s':'')+'</span>';
+  }
   document.getElementById('v2-picker-modal').style.display='flex';
 }
 function v2ClosePicker(){
@@ -4419,18 +4508,32 @@ function v2SaveDay(){
 // ════════════════════════════════════════════════════════
 
 function buildBlocksHTML(items){
+  // Dashboard timeline: study block cards above bar; exercise + other = name-label only (no interaction)
+  const WH=155,BAR_T=62,BAR_H=16,BAR_B=78;
+  const CARD_T_BOT=52;   // study card bottom y
+  const NAMELBL_Y=82;    // name-label y for exercise + other blocks
+  const TICK_Y=100;      // hour-tick row y
+
+  // ── Exercise block info — show today's cycle until 2AM rollover ──
+  const exPos=exGetPos();
+  const exEntry=exGetLog().find(function(e){return e.date===todayKey();});
+  const exDone=!!(exEntry&&exEntry.done);
+  const exCycle=exDone?exEntry.type:exCurrentCycle();
+  const exColor=EX_CYCLE_COLOR[exCycle]||'#f97316';
+  const exWMin=60;
+  const exWidPct=+(exWMin/1440*100).toFixed(3);
+  const exStartPct=+(exPos/1440*100).toFixed(3);
+  const exMidPct=+((exPos+exWMin/2)/1440*100).toFixed(3);
+
+  // ── Other blocks (daily templates) ──
+  const otherBlks=getOtherBlks();
+
+  // ── Study time blocks ──
   const blocks=getTBS();
-  if(!blocks.length) return '<div style="font-size:.7rem;color:var(--dim);padding:8px 0">No time blocks configured.</div>';
-  // WH sized so cards fill top→bar→bottom with minimal blank space
-  // CARD_T_BOT = approx card height (50px) = card tops at y≈0
-  // CARD_B_TOP = BAR_B + 10px gap; WH = CARD_B_TOP + card_height + small buffer
-  const WH=148,BAR_T=62,BAR_H=16,BAR_B=78;
-  const CARD_T_BOT=52,CARD_B_TOP=88;
   const bData=blocks.map(function(b){
     const bi=items.filter(function(x){return x.blockId===b.id;});
     return {b:b,bi:bi,wMin:bi.length*30};
   }).filter(function(d){return d.bi.length>0;});
-  if(!bData.length) return '<div style="font-size:.7rem;color:var(--dim);padding:8px 0">No tasks assigned to blocks yet.</div>';
   const _starts=getTBSStarts();
   let _cur=360;
   const bPos=bData.map(function(d){
@@ -4443,11 +4546,23 @@ function buildBlocksHTML(items){
     const cardLeftPct=Math.max(0,Math.min(100-cardWidPct,midPct-cardWidPct/2));
     return {d:d,startMin:startMin,widPct:widPct,startPct:startPct,midPct:midPct,cardWidPct:cardWidPct,cardLeftPct:cardLeftPct};
   });
+
+  // ── Bar: study blocks draggable; exercise + other = static colored segments ──
   let barInner='<div style="position:absolute;left:0;right:0;top:0;bottom:0;background:var(--border);opacity:.35"></div>';
   bPos.forEach(function(p){
     barInner+='<div data-tlseg="'+p.d.b.id+'" style="position:absolute;left:'+p.startPct+'%;width:'+p.widPct+'%;top:0;height:100%;background:'+p.d.b.color+';cursor:grab;transition:none" '
-      +'onmousedown="tlDragStart(event,\''+p.d.b.id+'\','+p.startMin+','+p.d.wMin+')" title="Drag to reposition · '+p.d.b.label+'"></div>';
+      +'onmousedown="tlDragStart(event,\''+p.d.b.id+'\','+p.startMin+','+p.d.wMin+')" title="Drag · '+p.d.b.label+'"></div>';
   });
+  // Exercise: static (read-only in Dashboard — use Calendar tab to interact)
+  barInner+='<div style="position:absolute;left:'+exStartPct+'%;width:'+exWidPct+'%;top:0;height:100%;background:'+exColor+';opacity:'+(exDone?'1':'.75')+';border-radius:3px" title="Exercise · 1h ('+exCycle+')"></div>';
+  // Other blocks: static
+  otherBlks.forEach(function(ob){
+    const obStartPct=+(ob.startMin/1440*100).toFixed(3);
+    const obWidPct=+(ob.durationMin/1440*100).toFixed(3);
+    barInner+='<div style="position:absolute;left:'+obStartPct+'%;width:'+obWidPct+'%;top:0;height:100%;background:'+ob.color+';opacity:.75;border-radius:3px" title="'+ob.name+'"></div>';
+  });
+
+  // ── Ticks ──
   let ticksHTML='';
   for(var _h=0;_h<=24;_h++){
     const pct=_h/24*100;const isMaj=_h%3===0;
@@ -4456,8 +4571,10 @@ function buildBlocksHTML(items){
       +(isMaj?'<div style="font-size:.42rem;color:var(--dim);white-space:nowrap;margin-top:1px">'+(_h===24?'0:00':String(_h).padStart(2,'0')+':00')+'</div>':'')
       +'</div>';
   }
+
+  // ── Study block cards (above bar, full detail) ──
   let cardsHTML='';
-  bPos.forEach(function(p,i){
+  bPos.forEach(function(p){
     const b=p.d.b,bi=p.d.bi;
     const firstIcon=b.goals&&b.goals.length?(TBS_GOALS.find(function(g){return g.key===b.goals[0];})||{icon:'📋'}).icon:'📋';
     const taskRows=bi.map(function(it){
@@ -4467,25 +4584,33 @@ function buildBlocksHTML(items){
     }).join('');
     const tip='<div class="tl2-tip">'+(taskRows||'<div class="tl-mc-empty">No tasks assigned</div>')+'</div>';
     const estStr=p.d.wMin>=60?(p.d.wMin/60).toFixed(1)+'h':'~'+p.d.wMin+' min';
-    const isTop=true; // all cards above bar — consistent alignment
     const cardInner='<div class="tl-mc-hdr"><span class="tl-mc-icon">'+firstIcon+'</span><span class="tl-mc-name" style="color:'+b.color+'">'+b.label+'</span></div>'
       +'<div class="tl-mc-meta">'+bi.length+' task'+(bi.length!==1?'s':'')+' · '+estStr+'</div>'+tip;
-    const cardBase=' onmousedown="event.stopPropagation()" ondragstart="return false"';
-    if(isTop){
-      cardsHTML+='<div class="tl2-card top" data-tlcard="'+b.id+'" style="bottom:'+(WH-CARD_T_BOT)+'px;left:'+p.cardLeftPct+'%;width:'+p.cardWidPct+'%;border-color:'+b.color+'"'+cardBase+'>'+cardInner+'</div>';
-      cardsHTML+='<div data-tlconn="'+b.id+'" style="position:absolute;left:'+p.midPct+'%;width:2px;transform:translateX(-50%);top:'+CARD_T_BOT+'px;height:'+(BAR_T-CARD_T_BOT)+'px;background:var(--border-lt)"></div>';
-    } else {
-      cardsHTML+='<div class="tl2-card bot" data-tlcard="'+b.id+'" style="top:'+CARD_B_TOP+'px;left:'+p.cardLeftPct+'%;width:'+p.cardWidPct+'%;border-color:'+b.color+'"'+cardBase+'>'+cardInner+'</div>';
-      cardsHTML+='<div data-tlconn="'+b.id+'" style="position:absolute;left:'+p.midPct+'%;width:2px;transform:translateX(-50%);top:'+BAR_B+'px;height:'+(CARD_B_TOP-BAR_B)+'px;background:var(--border-lt)"></div>';
-    }
+    const noClick=' onmousedown="event.stopPropagation()" ondragstart="return false"';
+    cardsHTML+='<div class="tl2-card top" data-tlcard="'+b.id+'" style="bottom:'+(WH-CARD_T_BOT)+'px;left:'+p.cardLeftPct+'%;width:'+p.cardWidPct+'%;border-color:'+b.color+'"'+noClick+'>'+cardInner+'</div>';
+    cardsHTML+='<div data-tlconn="'+b.id+'" style="position:absolute;left:'+p.midPct+'%;width:2px;transform:translateX(-50%);top:'+CARD_T_BOT+'px;height:'+(BAR_T-CARD_T_BOT)+'px;background:var(--border-lt)"></div>';
   });
+
+  // ── Name labels for exercise + other blocks (below bar, read-only) ──
+  cardsHTML+='<div style="position:absolute;top:'+NAMELBL_Y+'px;left:'+exMidPct+'%;transform:translateX(-50%);white-space:nowrap;pointer-events:none">'
+    +'<span style="font-size:.5rem;color:'+exColor+';background:'+exColor+'18;border:1px solid '+exColor+'55;border-radius:3px;padding:1px 6px">🏋️ '+(EX_CYCLE_EMOJI[exCycle]||'')+' '+exCycle+(exDone?' ✓':'')+'</span>'
+    +'</div>';
+  otherBlks.forEach(function(ob){
+    const obMidPct=+((ob.startMin+ob.durationMin/2)/1440*100).toFixed(2);
+    cardsHTML+='<div style="position:absolute;top:'+NAMELBL_Y+'px;left:'+obMidPct+'%;transform:translateX(-50%);white-space:nowrap;pointer-events:none">'
+      +'<span style="font-size:.5rem;color:'+ob.color+';background:'+ob.color+'18;border:1px solid '+ob.color+'55;border-radius:3px;padding:1px 6px">'+(ob.icon?ob.icon+' ':'')+ob.name+'</span>'
+      +'</div>';
+  });
+
+  // ── "Now" marker ──
   const _now=new Date();
   const nowPct=(_now.getHours()*60+_now.getMinutes())/1440*100;
   const nowHTML='<div style="position:absolute;left:'+nowPct+'%;top:'+(BAR_T-3)+'px;width:3px;height:'+(BAR_H+6)+'px;transform:translateX(-50%);background:#ef4444;border-radius:2px;z-index:10;pointer-events:none"></div>';
+
   return '<div class="tl2-root" style="user-select:none;height:'+WH+'px">'
     +cardsHTML
     +'<div class="tl2-bar-wrap" style="position:absolute;left:0;right:0;top:'+BAR_T+'px;height:'+BAR_H+'px;border-radius:99px;overflow:hidden">'+barInner+'</div>'
-    +'<div style="position:absolute;left:0;right:0;top:'+(BAR_B+2)+'px">'+ticksHTML+'</div>'
+    +'<div style="position:absolute;left:0;right:0;top:'+TICK_Y+'px">'+ticksHTML+'</div>'
     +nowHTML
     +'</div>';
 }
@@ -4823,6 +4948,454 @@ window.onload = () => {
   autoSaveDayIfNeeded(); // catch missed saves from page being closed overnight
   syncNow(document.getElementById('sync-btn'));
 };
+
+// ════════════════════════════════════════════════════════
+// EXERCISE TAB
+// ════════════════════════════════════════════════════════
+const EX_CYCLES = ['Push','Pull','Leg','Rest'];
+const EX_CYCLE_EMOJI = {Push:'🤜',Pull:'🤛',Leg:'🦵',Rest:'😴'};
+const EX_CYCLE_COLOR = {Push:'#f97316',Pull:'#38bdf8',Leg:'#a78bfa',Rest:'#4ade80'};
+
+function exGetLog(){ try{return JSON.parse(localStorage.getItem(LS+'ex_log')||'[]');}catch{return[];} }
+function exSetLog(arr){ localStorage.setItem(LS+'ex_log', JSON.stringify(arr)); }
+function exGetCycleIdx(){ return parseInt(localStorage.getItem(LS+'ex_cycleIdx')||'0'); }
+function exSetCycleIdx(i){ localStorage.setItem(LS+'ex_cycleIdx', String(i)); }
+function exGetPos(){ return parseInt(localStorage.getItem(LS+'ex_pos')||'360'); } // minutes from midnight, default 06:00
+function exSetPos(m){ localStorage.setItem(LS+'ex_pos', String(m)); }
+
+function exTodayKey(){ return todayKey(); }
+
+function exTodayEntry(){
+  var dk=exTodayKey();
+  return exGetLog().find(function(e){return e.date===dk;});
+}
+
+function exCurrentCycle(){
+  // The current cycle is determined by the cycleIdx stored
+  return EX_CYCLES[exGetCycleIdx() % EX_CYCLES.length];
+}
+
+function exToggleToday(){
+  var dk=exTodayKey();
+  var log=exGetLog();
+  var idx=log.findIndex(function(e){return e.date===dk;});
+  var cycle=exCurrentCycle();
+  if(idx>=0){
+    // toggle done
+    log[idx].done=!log[idx].done;
+    // advance cycle only when marking done; revert when unchecking
+    if(log[idx].done){
+      exSetCycleIdx((exGetCycleIdx()+1) % EX_CYCLES.length);
+    } else {
+      exSetCycleIdx(((exGetCycleIdx()-1)+EX_CYCLES.length) % EX_CYCLES.length);
+    }
+  } else {
+    log.unshift({date:dk, type:cycle, done:true, notes:''});
+    exSetCycleIdx((exGetCycleIdx()+1) % EX_CYCLES.length);
+  }
+  exSetLog(log);
+  if(document.getElementById('tab-calendar')?.style.display!=='none') renderCalendarTab();
+  if(activeVer()==='v2') renderChecklistV2();
+}
+
+function exStreak(){
+  var log=exGetLog().filter(function(e){return e.done;});
+  if(!log.length)return 0;
+  var streak=0; var d=new Date(); d.setHours(0,0,0,0);
+  for(var i=0;i<60;i++){
+    var dk=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    if(log.find(function(e){return e.date===dk&&e.done;})){streak++;}
+    else if(i>0)break; // allow today to be not yet done
+    d.setDate(d.getDate()-1);
+  }
+  return streak;
+}
+
+// ════════════════════════════════════════════════════════
+// CALENDAR TAB
+// ════════════════════════════════════════════════════════
+
+// ── Other Blocks (daily templates) ──
+const OTHER_BLKS_KEY = LS+'other_blk';
+var _calObColor = '#38bdf8'; // selected color for add form
+const OB_COLORS = ['#38bdf8','#4ade80','#fbbf24','#fb923c','#f87171','#60a5fa','#a78bfa','#607a94'];
+
+function getOtherBlks(){ try{return JSON.parse(localStorage.getItem(OTHER_BLKS_KEY)||'[]');}catch{return[];} }
+function setOtherBlks(arr){ localStorage.setItem(OTHER_BLKS_KEY, JSON.stringify(arr)); }
+
+function calSelectColor(c){
+  _calObColor=c;
+  document.querySelectorAll('#cal-ob-color-row [data-clr]').forEach(function(el){
+    el.style.transform = el.dataset.clr===c ? 'scale(1.3)' : 'scale(1)';
+    el.style.border = el.dataset.clr===c ? '2px solid #fff' : '2px solid transparent';
+  });
+}
+
+function calAddOtherBlk(){
+  var nameEl=document.getElementById('cal-ob-name');
+  var name=(nameEl?nameEl.value:'').trim();
+  if(!name){if(nameEl)nameEl.focus();return;}
+  var iconEl=document.getElementById('cal-ob-icon');
+  var icon=(iconEl?iconEl.value.trim():'');
+  var startEl=document.getElementById('cal-ob-start');
+  var startVal=(startEl?startEl.value:'12:00')||'12:00';
+  var sp=startVal.split(':');
+  var startMin=parseInt(sp[0]||12)*60+parseInt(sp[1]||0);
+  var durEl=document.getElementById('cal-ob-dur');
+  var dur=parseInt((durEl?durEl.value:60)||60);
+  var obs=getOtherBlks();
+  obs.push({id:'ob_'+Date.now().toString(36), name:name, icon:icon, color:_calObColor, startMin:startMin, durationMin:dur});
+  setOtherBlks(obs);
+  renderCalendarTab();
+  if(activeVer()==='v2') renderChecklistV2();
+}
+
+function calDeleteOtherBlk(id){
+  if(!confirm('Delete this block?'))return;
+  setOtherBlks(getOtherBlks().filter(function(x){return x.id!==id;}));
+  renderCalendarTab();
+  if(activeVer()==='v2') renderChecklistV2();
+}
+
+// ── Calendar: combined 24h timeline ──
+function buildCalendarTimelineHTML(items){
+  var WH=178,BAR_T=65,BAR_H=16,BAR_B=81;
+  var CARD_T_BOT=55,CARD_B_TOP=93;
+
+  // Exercise — show today's cycle until 2AM rollover, not the already-advanced next cycle
+  var exPos=exGetPos();
+  var exEntry=exGetLog().find(function(e){return e.date===todayKey();});
+  var exDone=!!(exEntry&&exEntry.done);
+  var exCycle=exDone?exEntry.type:exCurrentCycle();
+  var exColor=EX_CYCLE_COLOR[exCycle]||'#f97316';
+  var exWMin=60;
+  var exWidPct=+(exWMin/1440*100).toFixed(3);
+  var exStartPct=+(exPos/1440*100).toFixed(3);
+  var exMidPct=+((exPos+exWMin/2)/1440*100).toFixed(3);
+  var exCardW=Math.max(exWidPct,11);
+  var exCardL=Math.max(0,Math.min(100-exCardW,exMidPct-exCardW/2));
+
+  // Other blocks
+  var otherBlks=getOtherBlks();
+
+  // Study blocks
+  var blocks=getTBS();
+  var bData=blocks.map(function(b){
+    var bi=items.filter(function(x){return x.blockId===b.id;});
+    return {b:b,bi:bi,wMin:bi.length*30};
+  }).filter(function(d){return d.bi.length>0;});
+  var _starts=getTBSStarts();
+  var _cur=360;
+  var bPos=bData.map(function(d){
+    var startMin=(_starts[d.b.id]!==undefined)?_starts[d.b.id]:_cur;
+    if(_starts[d.b.id]===undefined) _cur+=d.wMin;
+    var widPct=d.wMin/1440*100;
+    var startPct=startMin/1440*100;
+    var midPct=startPct+widPct/2;
+    var cardWidPct=Math.max(widPct,10);
+    var cardLeftPct=Math.max(0,Math.min(100-cardWidPct,midPct-cardWidPct/2));
+    return {d:d,startMin:startMin,widPct:widPct,startPct:startPct,midPct:midPct,cardWidPct:cardWidPct,cardLeftPct:cardLeftPct};
+  });
+
+  // Other block positions (draggable)
+  var obPos=otherBlks.map(function(ob){
+    var widPct=ob.durationMin/1440*100;
+    var startPct=ob.startMin/1440*100;
+    var midPct=startPct+widPct/2;
+    var cardWidPct=Math.max(widPct,9);
+    var cardLeftPct=Math.max(0,Math.min(100-cardWidPct,midPct-cardWidPct/2));
+    return {ob:ob,startMin:ob.startMin,widPct:widPct,startPct:startPct,midPct:midPct,cardWidPct:cardWidPct,cardLeftPct:cardLeftPct};
+  });
+
+  // Bar
+  var barInner='<div style="position:absolute;left:0;right:0;top:0;bottom:0;background:var(--border);opacity:.35"></div>';
+  bPos.forEach(function(p){
+    barInner+='<div data-tlseg="'+p.d.b.id+'" style="position:absolute;left:'+p.startPct+'%;width:'+p.widPct+'%;top:0;height:100%;background:'+p.d.b.color+';cursor:grab;transition:none" '
+      +'onmousedown="tlDragStart(event,\''+p.d.b.id+'\','+p.startMin+','+p.d.wMin+')" title="Drag · '+p.d.b.label+'"></div>';
+  });
+  barInner+='<div data-tlseg="__exercise__" style="position:absolute;left:'+exStartPct+'%;width:'+exWidPct+'%;top:0;height:100%;background:'+exColor+';cursor:grab;opacity:'+(exDone?'1':'.8')+';border-radius:3px;transition:none" '
+    +'onmousedown="tlDragStart(event,\'__exercise__\','+exPos+','+exWMin+')" title="Drag · Exercise 1h"></div>';
+  obPos.forEach(function(p){
+    barInner+='<div data-tlseg="__ob_'+p.ob.id+'" style="position:absolute;left:'+p.startPct+'%;width:'+p.widPct+'%;top:0;height:100%;background:'+p.ob.color+';cursor:grab;opacity:.85;border-radius:3px;transition:none" '
+      +'onmousedown="tlDragStart(event,\'__ob_'+p.ob.id+'\','+p.startMin+','+p.ob.durationMin+')" title="Drag · '+p.ob.name+'"></div>';
+  });
+
+  // Ticks
+  var ticksHTML='';
+  for(var _h=0;_h<=24;_h++){
+    var tpct=_h/24*100; var isMaj=_h%3===0;
+    ticksHTML+='<div style="position:absolute;left:'+tpct+'%;transform:translateX(-50%);text-align:center">'
+      +'<div style="width:1px;height:'+(isMaj?7:4)+'px;background:var(--border-lt);margin:0 auto"></div>'
+      +(isMaj?'<div style="font-size:.42rem;color:var(--dim);white-space:nowrap;margin-top:1px">'+(_h===24?'0:00':String(_h).padStart(2,'0')+':00')+'</div>':'')
+      +'</div>';
+  }
+
+  // Cards
+  var cardsHTML='';
+
+  // Study block cards — above bar, full detail with tooltip
+  bPos.forEach(function(p){
+    var b=p.d.b,bi=p.d.bi;
+    var firstIcon=b.goals&&b.goals.length?(TBS_GOALS.find(function(g){return g.key===b.goals[0];})||{icon:'📋'}).icon:'📋';
+    var taskRows=bi.map(function(it){
+      var sl=V2_SLOTS.find(function(x){return x.key===it.slotKey;});
+      var tag=sl?'<span style="font-size:.52rem;color:'+sl.color+';background:'+sl.color+'22;border-radius:3px;padding:1px 5px;white-space:nowrap;flex-shrink:0">'+sl.icon+' '+sl.label+'</span>':'';
+      return '<div class="tl-ti'+(it.done?' done':'')+'"><span style="flex-shrink:0">'+(it.done?'✓':'○')+'</span><span class="tl-ti-n">'+it.name+'</span>'+tag+'</div>';
+    }).join('');
+    var tip='<div class="tl2-tip">'+(taskRows||'<div class="tl-mc-empty">No tasks assigned</div>')+'</div>';
+    var estStr=p.d.wMin>=60?(p.d.wMin/60).toFixed(1)+'h':'~'+p.d.wMin+' min';
+    var cardInner='<div class="tl-mc-hdr"><span class="tl-mc-icon">'+firstIcon+'</span><span class="tl-mc-name" style="color:'+b.color+'">'+b.label+'</span></div>'
+      +'<div class="tl-mc-meta">'+bi.length+' task'+(bi.length!==1?'s':'')+' · '+estStr+'</div>'+tip;
+    cardsHTML+='<div class="tl2-card top" data-tlcard="'+b.id+'" style="bottom:'+(WH-CARD_T_BOT)+'px;left:'+p.cardLeftPct+'%;width:'+p.cardWidPct+'%;border-color:'+b.color+'" onmousedown="event.stopPropagation()" ondragstart="return false">'+cardInner+'</div>';
+    cardsHTML+='<div data-tlconn="'+b.id+'" style="position:absolute;left:'+p.midPct+'%;width:2px;transform:translateX(-50%);top:'+CARD_T_BOT+'px;height:'+(BAR_T-CARD_T_BOT)+'px;background:var(--border-lt)"></div>';
+  });
+
+  // Other block cards — above bar, compact (name + duration only)
+  obPos.forEach(function(p){
+    var ob=p.ob;
+    var durStr=ob.durationMin>=60?(ob.durationMin/60).toFixed(1)+'h':ob.durationMin+'m';
+    var cardInner='<div class="tl-mc-hdr"><span class="tl-mc-icon">'+(ob.icon||'⚡')+'</span><span class="tl-mc-name" style="color:'+ob.color+'">'+ob.name+'</span></div>'
+      +'<div class="tl-mc-meta">'+durStr+'</div>';
+    cardsHTML+='<div class="tl2-card top" data-tlcard="__ob_'+ob.id+'" style="bottom:'+(WH-CARD_T_BOT)+'px;left:'+p.cardLeftPct+'%;width:'+p.cardWidPct+'%;border-color:'+ob.color+'" onmousedown="event.stopPropagation()" ondragstart="return false">'+cardInner+'</div>';
+    cardsHTML+='<div data-tlconn="__ob_'+ob.id+'" style="position:absolute;left:'+p.midPct+'%;width:2px;transform:translateX(-50%);top:'+CARD_T_BOT+'px;height:'+(BAR_T-CARD_T_BOT)+'px;background:'+ob.color+'"></div>';
+  });
+
+  // Exercise card — below bar, interactive checkbox
+  var exCardInner='<div class="tl-mc-hdr"><span class="tl-mc-icon">🏋️</span><span class="tl-mc-name" style="color:'+exColor+'">Exercise · 1h</span></div>'
+    +'<div style="display:flex;align-items:center;gap:5px;margin-top:2px;cursor:pointer" onclick="exToggleToday()">'
+      +'<div style="width:13px;height:13px;border-radius:3px;border:1.5px solid '+exColor+';background:'+(exDone?exColor:'transparent')+';flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.5rem;color:#000">'+(exDone?'✓':'')+'</div>'
+      +'<span style="font-size:.6rem;font-weight:700;color:'+exColor+'">'+(EX_CYCLE_EMOJI[exCycle]||'')+' '+exCycle+' Day</span>'
+    +'</div>';
+  cardsHTML+='<div class="tl2-card bot" data-tlcard="__exercise__" style="top:'+CARD_B_TOP+'px;left:'+exCardL.toFixed(2)+'%;width:'+exCardW.toFixed(2)+'%;border-color:'+exColor+'" onmousedown="event.stopPropagation()" ondragstart="return false">'+exCardInner+'</div>';
+  cardsHTML+='<div data-tlconn="__exercise__" style="position:absolute;left:'+exMidPct+'%;width:2px;transform:translateX(-50%);top:'+BAR_B+'px;height:'+(CARD_B_TOP-BAR_B)+'px;background:'+exColor+'"></div>';
+
+  // Now marker
+  var _now=new Date();
+  var nowPct=(_now.getHours()*60+_now.getMinutes())/1440*100;
+  var nowHTML='<div style="position:absolute;left:'+nowPct+'%;top:'+(BAR_T-3)+'px;width:3px;height:'+(BAR_H+6)+'px;transform:translateX(-50%);background:#ef4444;border-radius:2px;z-index:10;pointer-events:none"></div>';
+
+  return '<div class="tl2-root" style="user-select:none;height:'+WH+'px">'
+    +cardsHTML
+    +'<div class="tl2-bar-wrap" style="position:absolute;left:0;right:0;top:'+BAR_T+'px;height:'+BAR_H+'px;border-radius:99px;overflow:hidden">'+barInner+'</div>'
+    +'<div style="position:absolute;left:0;right:0;top:'+(BAR_B+2)+'px">'+ticksHTML+'</div>'
+    +nowHTML
+    +'</div>';
+}
+
+// ── Calendar: study blocks info section ──
+function buildCalStudyBlocksHTML(items){
+  var blocks=getTBS();
+  var starts=getTBSStarts();
+  if(!blocks.length) return '<div style="font-size:.72rem;color:var(--muted)">No time blocks configured. Set them up in the ⚙️ panel.</div>';
+  return blocks.map(function(b){
+    var bi=items.filter(function(x){return x.blockId===b.id;});
+    var doneN=bi.filter(function(x){return x.done;}).length;
+    var startMin=starts[b.id]!==undefined?starts[b.id]:360;
+    var startH=Math.floor(startMin/60),startM=startMin%60;
+    var startStr=startH+':'+String(startM).padStart(2,'0');
+    var pct=bi.length>0?Math.round(doneN/bi.length*100):0;
+    var html='<div style="margin-bottom:10px;padding:10px 12px;border-left:3px solid '+b.color+';background:var(--card-alt);border-radius:0 8px 8px 0">'
+      +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
+        +'<span style="font-size:.72rem;font-weight:700;color:'+b.color+'">'+b.label+'</span>'
+        +'<span style="font-size:.58rem;color:var(--muted)">from '+startStr+'</span>'
+        +(bi.length?'<span style="font-size:.58rem;color:var(--muted);margin-left:auto">'+doneN+'/'+bi.length+' done · '+pct+'%</span>':'')
+      +'</div>';
+    if(bi.length){
+      bi.forEach(function(it){
+        var sl=V2_SLOTS.find(function(x){return x.key===it.slotKey;});
+        html+='<div style="display:flex;align-items:center;gap:6px;padding:3px 0;font-size:.65rem;'+(it.done?'color:var(--dim)':'color:var(--text)')+'">'
+          +'<span style="flex-shrink:0;color:'+(it.done?'var(--green)':'var(--dim)')+'">'+( it.done?'✓':'○')+'</span>'
+          +(sl?'<span style="font-size:.5rem;padding:0 4px;border-radius:3px;flex-shrink:0;color:'+sl.color+';background:'+sl.color+'22">'+sl.icon+'</span>':'')
+          +'<span style="'+(it.done?'text-decoration:line-through':'')+'">'+it.name+'</span>'
+        +'</div>';
+      });
+    } else {
+      html+='<div style="font-size:.62rem;color:var(--dim)">No tasks assigned to this block.</div>';
+    }
+    html+='</div>';
+    return html;
+  }).join('');
+}
+
+// ── Calendar: exercise section ──
+function buildCalExerciseHTML(){
+  var log=exGetLog();
+  var dk=todayKey();
+  var todayEntry=log.find(function(e){return e.date===dk;});
+  var isDone=!!(todayEntry&&todayEntry.done);
+  var cycle=isDone?todayEntry.type:exCurrentCycle();
+  var color=EX_CYCLE_COLOR[cycle]||'#f97316';
+  var streak=exStreak();
+  var totalDone=log.filter(function(e){return e.done;}).length;
+  var nextType=EX_CYCLES[exGetCycleIdx()%EX_CYCLES.length];
+
+  // Stats row
+  var html='<div style="display:flex;gap:20px;font-size:.65rem;color:var(--muted);margin-bottom:12px">'
+    +'<span>Streak <strong style="color:#f97316">'+streak+'</strong></span>'
+    +'<span>Total done <strong style="color:var(--green)">'+totalDone+'</strong></span>'
+    +'<span>Next <strong style="color:'+EX_CYCLE_COLOR[nextType]+'">'+nextType+'</strong></span>'
+    +'</div>';
+
+  // Check-in row
+  html+='<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--card-alt);border:1.5px solid '+color+';border-radius:10px;margin-bottom:12px;cursor:pointer" onclick="exToggleToday()">'
+    +'<div style="width:20px;height:20px;border-radius:5px;border:2px solid '+color+';background:'+(isDone?color:'transparent')+';flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.7rem;color:#000">'+(isDone?'✓':'')+'</div>'
+    +'<div>'
+      +'<div style="font-size:.72rem;font-weight:700;color:'+color+'">'+(EX_CYCLE_EMOJI[cycle]||'')+' '+cycle+' Day</div>'
+      +'<div style="font-size:.58rem;color:var(--muted)">'+(isDone?'Completed today — tap to undo':'Tap to mark today done')+'</div>'
+    +'</div>'
+    +'</div>';
+
+  // Cycle pills
+  html+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">'
+    +EX_CYCLES.map(function(t){
+      var isCur=t===cycle; var c=EX_CYCLE_COLOR[t];
+      return '<span style="font-size:.6rem;padding:3px 10px;border-radius:99px;border:1px solid '+(isCur?c:'rgba(255,255,255,.12)')+';color:'+(isCur?c:'#6b7280')+';background:'+(isCur?'rgba(0,0,0,.3)':'transparent')+';font-weight:'+(isCur?'700':'400')+'">'+(EX_CYCLE_EMOJI[t]||'')+' '+t+'</span>';
+    }).join('')
+    +'</div>';
+
+  // Log table
+  var rowsHTML=log.length?log.slice(0,20).map(function(e,i){
+    var c=EX_CYCLE_COLOR[e.type]||'#f97316';
+    var dt=new Date(e.date+'T00:00:00');
+    var lbl=dt.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+    return '<tr style="border-top:1px solid rgba(255,255,255,.06)'+(i===0?';background:rgba(255,255,255,.03)':'')+'">'
+      +'<td style="padding:5px 8px;color:#e2e8f0;font-size:.62rem">'+lbl+'</td>'
+      +'<td style="padding:5px 8px"><span style="font-weight:700;color:'+c+';font-size:.62rem">'+(EX_CYCLE_EMOJI[e.type]||'')+' '+e.type+'</span></td>'
+      +'<td style="padding:5px 8px;text-align:center;color:'+(e.done?'#4ade80':'#4b5563')+';font-size:.75rem">'+(e.done?'✓':'✗')+'</td>'
+      +'</tr>';
+  }).join(''):'<tr><td colspan="3" style="padding:12px 8px;color:#4b5563;text-align:center;font-size:.7rem">No entries yet — check in above to start your log.</td></tr>';
+
+  html+='<table style="width:100%;border-collapse:collapse">'
+    +'<tr style="color:#6b7280;text-transform:uppercase;font-size:.5rem;letter-spacing:.06em">'
+      +'<td style="padding:4px 8px">Date</td><td style="padding:4px 8px">Type</td><td style="padding:4px 8px;text-align:center">Done</td>'
+    +'</tr>'+rowsHTML+'</table>';
+
+  if(log.length){
+    html+='<div style="text-align:right;margin-top:8px">'
+      +'<button onclick="exClearLog()" style="font-size:.55rem;color:#4b5563;background:transparent;border:1px solid rgba(255,255,255,.08);border-radius:6px;padding:3px 10px;cursor:pointer">Clear log</button>'
+    +'</div>';
+  }
+  return html;
+}
+
+// ── Calendar: other blocks management section ──
+function buildCalOtherBlocksHTML(){
+  var obs=getOtherBlks();
+  var html='';
+
+  // Existing blocks list
+  if(obs.length){
+    html+='<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">';
+    obs.forEach(function(ob){
+      var startH=Math.floor(ob.startMin/60),startM=ob.startMin%60;
+      var endMin=ob.startMin+ob.durationMin;
+      var endH=Math.floor(endMin/60)%24,endM=endMin%60;
+      html+='<div style="display:flex;align-items:center;gap:8px;padding:7px 11px;background:var(--card-alt);border:1.5px solid '+ob.color+';border-radius:9px">'
+        +'<span style="font-size:.85rem">'+(ob.icon||'⚡')+'</span>'
+        +'<div>'
+          +'<div style="font-size:.68rem;font-weight:700;color:'+ob.color+'">'+ob.name+'</div>'
+          +'<div style="font-size:.55rem;color:var(--muted)">'+startH+':'+String(startM).padStart(2,'0')+' – '+endH+':'+String(endM).padStart(2,'0')+'</div>'
+        +'</div>'
+        +'<button onclick="calDeleteOtherBlk(\''+ob.id+'\')" style="font-size:.7rem;background:transparent;border:none;color:var(--dim);cursor:pointer;padding:0 2px;margin-left:4px" title="Delete">×</button>'
+      +'</div>';
+    });
+    html+='</div>';
+  } else {
+    html+='<div style="font-size:.7rem;color:var(--muted);margin-bottom:12px">No custom blocks yet. Add one below.</div>';
+  }
+
+  // Add form
+  var colorDots=OB_COLORS.map(function(c,i){
+    var isSel=c===_calObColor;
+    return '<div onclick="calSelectColor(\''+c+'\')" data-clr="'+c+'" style="width:20px;height:20px;border-radius:50%;background:'+c+';cursor:pointer;flex-shrink:0;transition:transform .15s;border:2px solid '+(isSel?'#fff':'transparent')+';transform:'+(isSel?'scale(1.3)':'scale(1)')+'" title="'+c+'"></div>';
+  }).join('');
+
+  html+='<details><summary style="font-size:.65rem;font-weight:600;color:var(--accent);cursor:pointer;list-style:none;display:inline-flex;align-items:center;gap:5px;padding:3px 0;outline:none">▸ Add new block</summary>'
+    +'<div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+      +'<div>'
+        +'<div style="font-size:.6rem;color:var(--muted);margin-bottom:4px">Name</div>'
+        +'<input id="cal-ob-name" type="text" placeholder="e.g. Lunch" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:7px 10px;color:var(--text);font-size:.72rem;font-family:inherit;outline:none;box-sizing:border-box">'
+      +'</div>'
+      +'<div>'
+        +'<div style="font-size:.6rem;color:var(--muted);margin-bottom:4px">Icon (emoji)</div>'
+        +'<input id="cal-ob-icon" type="text" placeholder="🍽️" maxlength="4" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:7px 10px;color:var(--text);font-size:.85rem;font-family:inherit;outline:none;box-sizing:border-box">'
+      +'</div>'
+      +'<div>'
+        +'<div style="font-size:.6rem;color:var(--muted);margin-bottom:4px">Start time</div>'
+        +'<input id="cal-ob-start" type="time" value="12:00" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:7px 10px;color:var(--text);font-size:.72rem;font-family:inherit;outline:none;box-sizing:border-box;color-scheme:dark">'
+      +'</div>'
+      +'<div>'
+        +'<div style="font-size:.6rem;color:var(--muted);margin-bottom:4px">Duration</div>'
+        +'<select id="cal-ob-dur" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:7px 10px;color:var(--text);font-size:.72rem;font-family:inherit;outline:none;box-sizing:border-box">'
+          +'<option value="15">15 min</option>'
+          +'<option value="30">30 min</option>'
+          +'<option value="45">45 min</option>'
+          +'<option value="60" selected>1 hour</option>'
+          +'<option value="90">1.5 hours</option>'
+          +'<option value="120">2 hours</option>'
+          +'<option value="180">3 hours</option>'
+        +'</select>'
+      +'</div>'
+    +'</div>'
+    +'<div style="margin-top:10px">'
+      +'<div style="font-size:.6rem;color:var(--muted);margin-bottom:6px">Color</div>'
+      +'<div id="cal-ob-color-row" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+colorDots+'</div>'
+    +'</div>'
+    +'<button onclick="calAddOtherBlk()" style="margin-top:14px;padding:8px 22px;border-radius:8px;border:none;background:var(--accent);color:#000;font-size:.72rem;font-weight:700;cursor:pointer;font-family:inherit">Add Block</button>'
+    +'</details>';
+
+  return html;
+}
+
+// ── Calendar tab main render ──
+function renderCalendarTab(){
+  var root=document.getElementById('cal-root');
+  if(!root)return;
+  var items=getV2Items();
+  var today=new Date();
+  var dayNames=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  var dateStr=today.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+
+  root.innerHTML=
+    // Header
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">'
+      +'<div>'
+        +'<div style="font-size:1.1rem;font-weight:800;letter-spacing:-.025em">'+dayNames[today.getDay()]+'\'s Schedule</div>'
+        +'<div style="font-size:.65rem;color:var(--muted);margin-top:2px">'+dateStr+'</div>'
+      +'</div>'
+    +'</div>'
+
+    // ── Full Day Timeline ──
+    +'<div class="card" style="border-top:2px solid var(--accent);margin-bottom:14px">'
+      +'<div class="ct">Full Day Timeline<span class="ct-hint">drag any block to reposition</span></div>'
+      +buildCalendarTimelineHTML(items)
+    +'</div>'
+
+    // ── Study Blocks ──
+    +'<div class="card" style="border-top:2px solid var(--blue);margin-bottom:14px">'
+      +'<div class="ct">📚 Study Blocks</div>'
+      +buildCalStudyBlocksHTML(items)
+    +'</div>'
+
+    // ── Exercise ──
+    +'<div class="card" style="border-top:2px solid #f97316;margin-bottom:14px">'
+      +'<div class="ct">🏋️ Exercise</div>'
+      +buildCalExerciseHTML()
+    +'</div>'
+
+    // ── Other Blocks ──
+    +'<div class="card" style="border-top:2px solid var(--purple);margin-bottom:14px">'
+      +'<div class="ct">⚡ Other Blocks<span class="ct-hint">daily templates · drag to reposition</span></div>'
+      +buildCalOtherBlocksHTML()
+    +'</div>';
+}
+
+function exClearLog(){
+  if(!confirm('Clear all exercise log entries?'))return;
+  exSetLog([]);
+  exSetCycleIdx(0);
+  if(document.getElementById('tab-calendar')?.style.display!=='none') renderCalendarTab();
+}
 </script>
 <!-- V2 Item Picker Modal -->
 <div id="v2-picker-modal" class="sdm-overlay" style="display:none" onclick="if(event.target===this)v2ClosePicker()">
