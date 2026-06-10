@@ -445,6 +445,7 @@ body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color
 .tl2-scroll::-webkit-scrollbar-thumb{background:var(--border-lt);border-radius:2px;}
 .tl2-root{position:relative;height:148px;margin:8px 0 12px;}
 .tl2-card{background:var(--card);border:2px solid;border-radius:8px;padding:6px 10px;position:absolute;box-sizing:border-box;overflow:visible;cursor:pointer;z-index:1;transition:z-index 0s,box-shadow .15s;}
+#tab-calendar .tl2-card{min-width:120px;}
 .tl2-card:hover{z-index:20;box-shadow:0 4px 20px rgba(0,0,0,.55);}
 .tl2-card.tl-top{z-index:20;box-shadow:0 4px 20px rgba(0,0,0,.55);}
 .tl2-tip{position:absolute;left:0;min-width:160px;max-width:220px;background:var(--card);border:1px solid var(--border-lt);border-radius:8px;padding:8px 10px;z-index:30;display:none;box-shadow:0 8px 24px rgba(0,0,0,.5);}
@@ -943,7 +944,7 @@ body.mode-refined #dontknow-kpi-badge{background:rgba(167,139,250,.12) !importan
 
 <!-- ── Calendar Tab ── -->
 <div id="tab-calendar" style="display:none">
-  <div id="cal-root" style="padding:16px;max-width:960px;margin:0 auto"></div>
+  <div id="cal-root" style="padding:16px"></div>
 </div>
 
 <!-- ── Drawer ── -->
