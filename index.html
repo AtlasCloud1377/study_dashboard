@@ -1248,6 +1248,71 @@ function fbListenAll(){
       }
     } finally { _fbEcho = false; }
   });
+
+  // Exercise log
+  fbRef('ex_log').on('value', function(snap){
+    if(!snap.exists()) return;
+    _fbEcho = true;
+    try {
+      var arr = snap.val();
+      if(Array.isArray(arr)){
+        localStorage.setItem(LS+'ex_log', JSON.stringify(arr));
+        if(document.getElementById('tab-calendar')?.style.display !== 'none') renderCalendarTab();
+        if(activeVer && activeVer()==='v2') renderChecklistV2();
+      }
+    } finally { _fbEcho = false; }
+  });
+
+  // Exercise cycle index
+  fbRef('ex_cycleIdx').on('value', function(snap){
+    if(!snap.exists()) return;
+    _fbEcho = true;
+    try {
+      var i = snap.val();
+      if(i !== null) localStorage.setItem(LS+'ex_cycleIdx', String(i));
+    } finally { _fbEcho = false; }
+  });
+
+  // Exercise position
+  fbRef('ex_pos').on('value', function(snap){
+    if(!snap.exists()) return;
+    _fbEcho = true;
+    try {
+      var m = snap.val();
+      if(m !== null){
+        localStorage.setItem(LS+'ex_pos', String(m));
+        if(document.getElementById('tab-calendar')?.style.display !== 'none') renderCalendarTab();
+        if(activeVer && activeVer()==='v2') renderChecklistV2();
+      }
+    } finally { _fbEcho = false; }
+  });
+
+  // Other blocks templates
+  fbRef('other_blks').on('value', function(snap){
+    if(!snap.exists()) return;
+    _fbEcho = true;
+    try {
+      var arr = snap.val();
+      if(Array.isArray(arr)){
+        localStorage.setItem(LS+'other_blk', JSON.stringify(arr));
+        if(document.getElementById('tab-calendar')?.style.display !== 'none') renderCalendarTab();
+        if(activeVer && activeVer()==='v2') renderChecklistV2();
+      }
+    } finally { _fbEcho = false; }
+  });
+
+  // Other block per-day completions
+  fbRef('ob_done').on('value', function(snap){
+    if(!snap.exists()) return;
+    _fbEcho = true;
+    try {
+      var data = snap.val();
+      if(data){
+        localStorage.setItem(LS+'ob_done', JSON.stringify(data));
+        if(document.getElementById('tab-calendar')?.style.display !== 'none') renderCalendarTab();
+      }
+    } finally { _fbEcho = false; }
+  });
 }
 
 // ── Status indicator ──
@@ -4957,11 +5022,11 @@ const EX_CYCLE_EMOJI = {Push:'🤜',Pull:'🤛',Leg:'🦵',Rest:'😴'};
 const EX_CYCLE_COLOR = {Push:'#f97316',Pull:'#38bdf8',Leg:'#a78bfa',Rest:'#4ade80'};
 
 function exGetLog(){ try{return JSON.parse(localStorage.getItem(LS+'ex_log')||'[]');}catch{return[];} }
-function exSetLog(arr){ localStorage.setItem(LS+'ex_log', JSON.stringify(arr)); }
+function exSetLog(arr){ localStorage.setItem(LS+'ex_log', JSON.stringify(arr)); if(!_fbEcho) fbSet('ex_log', arr); }
 function exGetCycleIdx(){ return parseInt(localStorage.getItem(LS+'ex_cycleIdx')||'0'); }
-function exSetCycleIdx(i){ localStorage.setItem(LS+'ex_cycleIdx', String(i)); }
+function exSetCycleIdx(i){ localStorage.setItem(LS+'ex_cycleIdx', String(i)); if(!_fbEcho) fbSet('ex_cycleIdx', i); }
 function exGetPos(){ return parseInt(localStorage.getItem(LS+'ex_pos')||'360'); } // minutes from midnight, default 06:00
-function exSetPos(m){ localStorage.setItem(LS+'ex_pos', String(m)); }
+function exSetPos(m){ localStorage.setItem(LS+'ex_pos', String(m)); if(!_fbEcho) fbSet('ex_pos', m); }
 
 function exTodayKey(){ return todayKey(); }
 
@@ -5018,10 +5083,47 @@ function exStreak(){
 // ── Other Blocks (daily templates) ──
 const OTHER_BLKS_KEY = LS+'other_blk';
 var _calObColor = '#38bdf8'; // selected color for add form
+var _calViewMode = 'daily';  // 'daily' | 'weekly'
+var _calWeekOffset = 0;      // 0 = current week, ±n weeks
 const OB_COLORS = ['#38bdf8','#4ade80','#fbbf24','#fb923c','#f87171','#60a5fa','#a78bfa','#607a94'];
 
 function getOtherBlks(){ try{return JSON.parse(localStorage.getItem(OTHER_BLKS_KEY)||'[]');}catch{return[];} }
-function setOtherBlks(arr){ localStorage.setItem(OTHER_BLKS_KEY, JSON.stringify(arr)); }
+function setOtherBlks(arr){ localStorage.setItem(OTHER_BLKS_KEY, JSON.stringify(arr)); if(!_fbEcho) fbSet('other_blks', arr); }
+
+// ── Other block per-day completion ──
+const OB_DONE_KEY=LS+'ob_done';
+function getObDoneAll(){try{return JSON.parse(localStorage.getItem(OB_DONE_KEY)||'{}')}catch{return{};}}
+function getObDone(dk){return getObDoneAll()[dk]||{};}
+function obToggleDone(id,dk){
+  var k=dk||todayKey();
+  var all=getObDoneAll();
+  if(!all[k])all[k]={};
+  all[k][id]=!all[k][id];
+  localStorage.setItem(OB_DONE_KEY,JSON.stringify(all));
+  if(!_fbEcho) fbSet('ob_done', all);
+  if(document.getElementById('tab-calendar')?.style.display!=='none') renderCalendarTab();
+}
+// 0=Mon…6=Sun for a YYYY-MM-DD key
+function obDowMon(dk){var d=new Date(dk+'T00:00:00');var w=d.getDay();return w===0?6:w-1;}
+function obAppliesToDay(ob,dowMon){
+  var s=ob.schedule||'everyday';
+  if(s==='everyday') return true;
+  if(s==='weekday') return dowMon<=4;
+  if(s==='weekend') return dowMon>=5;
+  if(Array.isArray(s)) return s.indexOf(dowMon)!==-1;
+  return true;
+}
+function obSchedLabel(sched){
+  if(!sched||sched==='everyday') return 'Every day';
+  if(sched==='weekday') return 'Weekdays';
+  if(sched==='weekend') return 'Weekend';
+  if(Array.isArray(sched)){var n=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];return sched.map(function(d){return n[d];}).join(', ');}
+  return 'Every day';
+}
+function calObSchedChange(val){
+  var row=document.getElementById('cal-ob-days-row');
+  if(row) row.style.display=val==='custom'?'flex':'none';
+}
 
 function calSelectColor(c){
   _calObColor=c;
@@ -5043,8 +5145,15 @@ function calAddOtherBlk(){
   var startMin=parseInt(sp[0]||12)*60+parseInt(sp[1]||0);
   var durEl=document.getElementById('cal-ob-dur');
   var dur=parseInt((durEl?durEl.value:60)||60);
+  var schedEl=document.getElementById('cal-ob-sched');
+  var sched=schedEl?schedEl.value:'everyday';
+  if(sched==='custom'){
+    var customDays=[];
+    [0,1,2,3,4,5,6].forEach(function(d){var cb=document.getElementById('cal-ob-day-'+d);if(cb&&cb.checked)customDays.push(d);});
+    sched=customDays.length?customDays:'everyday';
+  }
   var obs=getOtherBlks();
-  obs.push({id:'ob_'+Date.now().toString(36), name:name, icon:icon, color:_calObColor, startMin:startMin, durationMin:dur});
+  obs.push({id:'ob_'+Date.now().toString(36), name:name, icon:icon, color:_calObColor, startMin:startMin, durationMin:dur, schedule:sched});
   setOtherBlks(obs);
   renderCalendarTab();
   if(activeVer()==='v2') renderChecklistV2();
@@ -5075,8 +5184,10 @@ function buildCalendarTimelineHTML(items){
   var exCardW=Math.max(exWidPct,11);
   var exCardL=Math.max(0,Math.min(100-exCardW,exMidPct-exCardW/2));
 
-  // Other blocks
-  var otherBlks=getOtherBlks();
+  // Other blocks — filter to today's applicable schedule
+  var _todayDow=obDowMon(todayKey());
+  var _obDoneToday=getObDone(todayKey());
+  var otherBlks=getOtherBlks().filter(function(ob){return obAppliesToDay(ob,_todayDow);});
 
   // Study blocks
   var blocks=getTBS();
@@ -5150,12 +5261,16 @@ function buildCalendarTimelineHTML(items){
     cardsHTML+='<div data-tlconn="'+b.id+'" style="position:absolute;left:'+p.midPct+'%;width:2px;transform:translateX(-50%);top:'+CARD_T_BOT+'px;height:'+(BAR_T-CARD_T_BOT)+'px;background:var(--border-lt)"></div>';
   });
 
-  // Other block cards — above bar, compact (name + duration only)
+  // Other block cards — above bar, with checkbox
   obPos.forEach(function(p){
     var ob=p.ob;
+    var isDone=!!_obDoneToday[ob.id];
     var durStr=ob.durationMin>=60?(ob.durationMin/60).toFixed(1)+'h':ob.durationMin+'m';
-    var cardInner='<div class="tl-mc-hdr"><span class="tl-mc-icon">'+(ob.icon||'⚡')+'</span><span class="tl-mc-name" style="color:'+ob.color+'">'+ob.name+'</span></div>'
-      +'<div class="tl-mc-meta">'+durStr+'</div>';
+    var cardInner='<div class="tl-mc-hdr"><span class="tl-mc-icon">'+(ob.icon||'⚡')+'</span><span class="tl-mc-name" style="color:'+ob.color+';'+(isDone?'text-decoration:line-through;opacity:.55':'')+'">'+ob.name+'</span></div>'
+      +'<div style="display:flex;align-items:center;gap:5px;margin-top:3px;cursor:pointer" onclick="obToggleDone(\''+ob.id+'\');event.stopPropagation()">'
+        +'<div style="width:12px;height:12px;border-radius:3px;border:1.5px solid '+ob.color+';background:'+(isDone?ob.color:'transparent')+';flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.45rem;color:#000">'+(isDone?'✓':'')+'</div>'
+        +'<span style="font-size:.55rem;color:'+ob.color+'">'+(isDone?'Done':durStr)+'</span>'
+      +'</div>';
     cardsHTML+='<div class="tl2-card top" data-tlcard="__ob_'+ob.id+'" style="bottom:'+(WH-CARD_T_BOT)+'px;left:'+p.cardLeftPct+'%;width:'+p.cardWidPct+'%;border-color:'+ob.color+'" onmousedown="event.stopPropagation()" ondragstart="return false">'+cardInner+'</div>';
     cardsHTML+='<div data-tlconn="__ob_'+ob.id+'" style="position:absolute;left:'+p.midPct+'%;width:2px;transform:translateX(-50%);top:'+CARD_T_BOT+'px;height:'+(BAR_T-CARD_T_BOT)+'px;background:'+ob.color+'"></div>';
   });
@@ -5281,22 +5396,34 @@ function buildCalExerciseHTML(){
 // ── Calendar: other blocks management section ──
 function buildCalOtherBlocksHTML(){
   var obs=getOtherBlks();
+  var todayDone=getObDone(todayKey());
+  var todayDow=obDowMon(todayKey());
   var html='';
+  var INP='width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:6px 9px;color:var(--text);font-size:.72rem;font-family:inherit;outline:none;box-sizing:border-box';
 
   // Existing blocks list
   if(obs.length){
-    html+='<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">';
+    html+='<div style="display:flex;flex-direction:column;gap:7px;margin-bottom:14px">';
     obs.forEach(function(ob){
-      var startH=Math.floor(ob.startMin/60),startM=ob.startMin%60;
-      var endMin=ob.startMin+ob.durationMin;
-      var endH=Math.floor(endMin/60)%24,endM=endMin%60;
-      html+='<div style="display:flex;align-items:center;gap:8px;padding:7px 11px;background:var(--card-alt);border:1.5px solid '+ob.color+';border-radius:9px">'
+      var sh=Math.floor(ob.startMin/60),sm=ob.startMin%60;
+      var eMin=ob.startMin+ob.durationMin;
+      var eh=Math.floor(eMin/60)%24,em=eMin%60;
+      var isDone=!!todayDone[ob.id];
+      var appliesNow=obAppliesToDay(ob,todayDow);
+      html+='<div style="display:flex;align-items:center;gap:9px;padding:8px 11px;background:var(--card-alt);border:1.5px solid '+ob.color+(isDone?';opacity:.7':'')+';border-radius:9px">'
         +'<span style="font-size:.85rem">'+(ob.icon||'⚡')+'</span>'
-        +'<div>'
-          +'<div style="font-size:.68rem;font-weight:700;color:'+ob.color+'">'+ob.name+'</div>'
-          +'<div style="font-size:.55rem;color:var(--muted)">'+startH+':'+String(startM).padStart(2,'0')+' – '+endH+':'+String(endM).padStart(2,'0')+'</div>'
+        +'<div style="flex:1;min-width:0">'
+          +'<div style="font-size:.68rem;font-weight:700;color:'+ob.color+';'+(isDone?'text-decoration:line-through':'')+'">'+ob.name+'</div>'
+          +'<div style="font-size:.52rem;color:var(--dim)">'+sh+':'+String(sm).padStart(2,'0')+' – '+eh+':'+String(em).padStart(2,'0')+' · '+obSchedLabel(ob.schedule)+'</div>'
         +'</div>'
-        +'<button onclick="calDeleteOtherBlk(\''+ob.id+'\')" style="font-size:.7rem;background:transparent;border:none;color:var(--dim);cursor:pointer;padding:0 2px;margin-left:4px" title="Delete">×</button>'
+        // today checkbox (only if applies today)
+        +(appliesNow
+          ?'<div onclick="obToggleDone(\''+ob.id+'\')" style="cursor:pointer;display:flex;align-items:center;gap:5px;padding:3px 6px;border-radius:6px;background:'+ob.color+'18;border:1px solid '+ob.color+'44">'
+            +'<div style="width:13px;height:13px;border-radius:3px;border:1.5px solid '+ob.color+';background:'+(isDone?ob.color:'transparent')+';flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.48rem;color:#000">'+(isDone?'✓':'')+'</div>'
+            +'<span style="font-size:.52rem;color:'+ob.color+';white-space:nowrap">'+(isDone?'Done':'Today')+'</span>'
+          +'</div>'
+          :'<span style="font-size:.48rem;color:var(--dim);padding:3px 6px">Not today</span>')
+        +'<button onclick="calDeleteOtherBlk(\''+ob.id+'\')" style="font-size:.7rem;background:transparent;border:none;color:var(--dim);cursor:pointer;padding:0 4px;margin-left:2px" title="Delete">×</button>'
       +'</div>';
     });
     html+='</div>';
@@ -5305,45 +5432,138 @@ function buildCalOtherBlocksHTML(){
   }
 
   // Add form
-  var colorDots=OB_COLORS.map(function(c,i){
+  var colorDots=OB_COLORS.map(function(c){
     var isSel=c===_calObColor;
     return '<div onclick="calSelectColor(\''+c+'\')" data-clr="'+c+'" style="width:20px;height:20px;border-radius:50%;background:'+c+';cursor:pointer;flex-shrink:0;transition:transform .15s;border:2px solid '+(isSel?'#fff':'transparent')+';transform:'+(isSel?'scale(1.3)':'scale(1)')+'" title="'+c+'"></div>';
+  }).join('');
+  var dayNames2=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  var customDaysCkbs=dayNames2.map(function(n,i){
+    return '<label style="display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;font-size:.5rem;color:var(--muted)">'
+      +'<input type="checkbox" id="cal-ob-day-'+i+'" style="accent-color:var(--accent)">'+n+'</label>';
   }).join('');
 
   html+='<details><summary style="font-size:.65rem;font-weight:600;color:var(--accent);cursor:pointer;list-style:none;display:inline-flex;align-items:center;gap:5px;padding:3px 0;outline:none">▸ Add new block</summary>'
     +'<div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:10px">'
-      +'<div>'
-        +'<div style="font-size:.6rem;color:var(--muted);margin-bottom:4px">Name</div>'
-        +'<input id="cal-ob-name" type="text" placeholder="e.g. Lunch" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:7px 10px;color:var(--text);font-size:.72rem;font-family:inherit;outline:none;box-sizing:border-box">'
-      +'</div>'
-      +'<div>'
-        +'<div style="font-size:.6rem;color:var(--muted);margin-bottom:4px">Icon (emoji)</div>'
-        +'<input id="cal-ob-icon" type="text" placeholder="🍽️" maxlength="4" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:7px 10px;color:var(--text);font-size:.85rem;font-family:inherit;outline:none;box-sizing:border-box">'
-      +'</div>'
-      +'<div>'
-        +'<div style="font-size:.6rem;color:var(--muted);margin-bottom:4px">Start time</div>'
-        +'<input id="cal-ob-start" type="time" value="12:00" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:7px 10px;color:var(--text);font-size:.72rem;font-family:inherit;outline:none;box-sizing:border-box;color-scheme:dark">'
-      +'</div>'
-      +'<div>'
-        +'<div style="font-size:.6rem;color:var(--muted);margin-bottom:4px">Duration</div>'
-        +'<select id="cal-ob-dur" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:7px 10px;color:var(--text);font-size:.72rem;font-family:inherit;outline:none;box-sizing:border-box">'
-          +'<option value="15">15 min</option>'
-          +'<option value="30">30 min</option>'
-          +'<option value="45">45 min</option>'
-          +'<option value="60" selected>1 hour</option>'
-          +'<option value="90">1.5 hours</option>'
-          +'<option value="120">2 hours</option>'
+      +'<div><div style="font-size:.6rem;color:var(--muted);margin-bottom:4px">Name</div>'
+        +'<input id="cal-ob-name" type="text" placeholder="e.g. Lunch" style="'+INP+'"></div>'
+      +'<div><div style="font-size:.6rem;color:var(--muted);margin-bottom:4px">Icon (emoji)</div>'
+        +'<input id="cal-ob-icon" type="text" placeholder="🍽️" maxlength="4" style="'+INP+'"></div>'
+      +'<div><div style="font-size:.6rem;color:var(--muted);margin-bottom:4px">Start time</div>'
+        +'<input id="cal-ob-start" type="time" value="12:00" style="'+INP+';color-scheme:dark"></div>'
+      +'<div><div style="font-size:.6rem;color:var(--muted);margin-bottom:4px">Duration</div>'
+        +'<select id="cal-ob-dur" style="'+INP+'">'
+          +'<option value="15">15 min</option><option value="30">30 min</option>'
+          +'<option value="45">45 min</option><option value="60" selected>1 hour</option>'
+          +'<option value="90">1.5 hours</option><option value="120">2 hours</option>'
           +'<option value="180">3 hours</option>'
+        +'</select></div>'
+      +'<div style="grid-column:1/-1"><div style="font-size:.6rem;color:var(--muted);margin-bottom:4px">Repeat</div>'
+        +'<select id="cal-ob-sched" onchange="calObSchedChange(this.value)" style="'+INP+'">'
+          +'<option value="everyday">Every day</option>'
+          +'<option value="weekday">Weekdays (Mon–Fri)</option>'
+          +'<option value="weekend">Weekend (Sat–Sun)</option>'
+          +'<option value="custom">Custom days…</option>'
         +'</select>'
+        +'<div id="cal-ob-days-row" style="display:none;gap:10px;flex-wrap:wrap;margin-top:8px">'+customDaysCkbs+'</div>'
       +'</div>'
     +'</div>'
-    +'<div style="margin-top:10px">'
-      +'<div style="font-size:.6rem;color:var(--muted);margin-bottom:6px">Color</div>'
+    +'<div style="margin-top:10px"><div style="font-size:.6rem;color:var(--muted);margin-bottom:6px">Color</div>'
       +'<div id="cal-ob-color-row" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+colorDots+'</div>'
     +'</div>'
     +'<button onclick="calAddOtherBlk()" style="margin-top:14px;padding:8px 22px;border-radius:8px;border:none;background:var(--accent);color:#000;font-size:.72rem;font-weight:700;cursor:pointer;font-family:inherit">Add Block</button>'
     +'</details>';
 
+  return html;
+}
+
+// ── Calendar: weekly view helpers ──
+function calSetView(v){ _calViewMode=v; renderCalendarTab(); }
+function calWeekNav(dir){ _calWeekOffset+=dir; renderCalendarTab(); }
+
+function getWeekDays(offset){
+  var now=new Date();
+  var dow=now.getDay(); // 0=Sun
+  var toMon=dow===0?-6:1-dow;
+  var mon=new Date(now);
+  mon.setDate(now.getDate()+toMon+offset*7);
+  mon.setHours(0,0,0,0);
+  var days=[];
+  for(var i=0;i<7;i++){
+    var d=new Date(mon); d.setDate(mon.getDate()+i);
+    days.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'));
+  }
+  return days;
+}
+
+function buildWeeklyViewHTML(){
+  var days=getWeekDays(_calWeekOffset);
+  var today=todayKey();
+  var exLog=exGetLog();
+  var obs=getOtherBlks();
+  var obDoneAll=getObDoneAll();
+  var DAY_NAMES=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
+  // Week range header + navigation
+  var monD=new Date(days[0]+'T00:00:00'), sunD=new Date(days[6]+'T00:00:00');
+  var rangeStr=monD.toLocaleDateString('en-GB',{day:'numeric',month:'short'})+' – '+sunD.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+  var html='<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">'
+    +'<button onclick="calWeekNav(-1)" style="padding:4px 13px;border-radius:7px;border:1px solid var(--border);background:var(--card-alt);color:var(--text);font-size:.72rem;cursor:pointer;font-family:inherit">‹</button>'
+    +'<div style="flex:1;text-align:center;font-size:.7rem;font-weight:700">'+rangeStr+'</div>'
+    +(_calWeekOffset!==0?'<button onclick="calWeekNav('+(-_calWeekOffset)+')" style="padding:4px 10px;border-radius:7px;border:1px solid var(--border);background:transparent;color:var(--accent);font-size:.58rem;cursor:pointer;font-family:inherit">Today</button>':'<span style="width:52px"></span>')
+    +'<button onclick="calWeekNav(1)" style="padding:4px 13px;border-radius:7px;border:1px solid var(--border);background:var(--card-alt);color:var(--text);font-size:.72rem;cursor:pointer;font-family:inherit">›</button>'
+    +'</div>';
+
+  // 7-column grid
+  html+='<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">';
+  days.forEach(function(dk,i){
+    var isToday=dk===today, isFuture=dk>today;
+    var dateObj=new Date(dk+'T00:00:00');
+    var dayNum=dateObj.getDate();
+    var dow=obDowMon(dk);
+    var exEntry=exLog.find(function(e){return e.date===dk;});
+    var dayObDone=obDoneAll[dk]||{};
+    // Other blocks that apply to this day
+    var dayObs=obs.filter(function(ob){return obAppliesToDay(ob,dow);});
+
+    var cellBorder=isToday?'1.5px solid var(--accent)':'1px solid var(--border)';
+    var cellBg=isToday?'rgba(139,92,246,.1)':'var(--card-alt)';
+
+    var cell='<div style="background:'+cellBg+';border:'+cellBorder+';border-radius:9px;padding:6px 5px;min-height:90px;display:flex;flex-direction:column;gap:2px">';
+
+    // Day header
+    cell+='<div style="font-size:.48rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:'+(isToday?'var(--accent)':'var(--dim)')+'">'+DAY_NAMES[i]+'</div>'
+      +'<div style="font-size:.88rem;font-weight:800;line-height:1;color:'+(isToday?'var(--text)':'var(--muted)')+';margin-bottom:3px">'+dayNum+(isToday?'<span style="font-size:.32rem;color:var(--accent);vertical-align:middle;margin-left:2px">NOW</span>':'')+'</div>'
+      +'<div style="height:1px;background:rgba(255,255,255,.07);margin-bottom:3px"></div>';
+
+    // Exercise row
+    if(exEntry){
+      var ec=EX_CYCLE_COLOR[exEntry.type]||'#f97316';
+      cell+='<div style="font-size:.47rem;font-weight:600;color:'+(exEntry.done?ec:'#4b5563')+';margin-bottom:2px">🏋️ '+(exEntry.done?(EX_CYCLE_EMOJI[exEntry.type]||'')+' '+exEntry.type+' ✓':'—')+'</div>';
+    } else if(!isFuture){
+      cell+='<div style="font-size:.47rem;color:#4b5563;margin-bottom:2px">🏋️ —</div>';
+    }
+
+    // Other blocks with time + checkbox
+    if(dayObs.length){
+      cell+='<div style="height:1px;background:rgba(255,255,255,.05);margin-bottom:3px"></div>';
+      dayObs.forEach(function(ob){
+        var isDone=!!dayObDone[ob.id];
+        var sh=Math.floor(ob.startMin/60),sm=ob.startMin%60;
+        var timeStr=sh+':'+String(sm).padStart(2,'0');
+        cell+='<div onclick="obToggleDone(\''+ob.id+'\',\''+dk+'\')" style="display:flex;align-items:center;gap:4px;cursor:pointer;padding:2px 3px;border-radius:4px;background:'+ob.color+(isDone?'28':'12')+';margin-bottom:1px">'
+          +'<div style="width:10px;height:10px;border-radius:2px;border:1.5px solid '+ob.color+';background:'+(isDone?ob.color:'transparent')+';flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.38rem;color:#000">'+(isDone?'✓':'')+'</div>'
+          +'<div style="min-width:0;flex:1">'
+            +'<div style="font-size:.44rem;color:'+ob.color+';font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'+(isDone?'text-decoration:line-through;opacity:.6':'')+'">'+( ob.icon||'⚡')+' '+ob.name+'</div>'
+            +'<div style="font-size:.4rem;color:var(--dim)">'+timeStr+'</div>'
+          +'</div>'
+        +'</div>';
+      });
+    }
+
+    cell+='</div>';
+    html+=cell;
+  });
+  html+='</div>';
   return html;
 }
 
@@ -5356,37 +5576,42 @@ function renderCalendarTab(){
   var dayNames=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   var dateStr=today.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
 
-  root.innerHTML=
-    // Header
-    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">'
-      +'<div>'
-        +'<div style="font-size:1.1rem;font-weight:800;letter-spacing:-.025em">'+dayNames[today.getDay()]+'\'s Schedule</div>'
-        +'<div style="font-size:.65rem;color:var(--muted);margin-top:2px">'+dateStr+'</div>'
-      +'</div>'
-    +'</div>'
+  // Header
+  var header='<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:14px;flex-wrap:wrap">'
+    +'<div style="font-size:1.1rem;font-weight:800;letter-spacing:-.025em">'+dayNames[today.getDay()]+'\'s Schedule</div>'
+    +'<div style="font-size:.65rem;color:var(--muted)">'+dateStr+'</div>'
+    +'</div>';
 
-    // ── Full Day Timeline ──
-    +'<div class="card" style="border-top:2px solid var(--accent);margin-bottom:14px">'
-      +'<div class="ct">Full Day Timeline<span class="ct-hint">drag any block to reposition</span></div>'
-      +buildCalendarTimelineHTML(items)
-    +'</div>'
-
-    // ── Study Blocks ──
-    +'<div class="card" style="border-top:2px solid var(--blue);margin-bottom:14px">'
+  // Left column: detail sections
+  var leftCol=
+    '<div class="card" style="border-top:2px solid var(--blue);margin-bottom:12px">'
       +'<div class="ct">📚 Study Blocks</div>'
       +buildCalStudyBlocksHTML(items)
     +'</div>'
-
-    // ── Exercise ──
-    +'<div class="card" style="border-top:2px solid #f97316;margin-bottom:14px">'
+    +'<div class="card" style="border-top:2px solid #f97316;margin-bottom:12px">'
       +'<div class="ct">🏋️ Exercise</div>'
       +buildCalExerciseHTML()
     +'</div>'
-
-    // ── Other Blocks ──
-    +'<div class="card" style="border-top:2px solid var(--purple);margin-bottom:14px">'
-      +'<div class="ct">⚡ Other Blocks<span class="ct-hint">daily templates · drag to reposition</span></div>'
+    +'<div class="card" style="border-top:2px solid var(--purple);margin-bottom:12px">'
+      +'<div class="ct">⚡ Other Blocks<span class="ct-hint">drag to reposition</span></div>'
       +buildCalOtherBlocksHTML()
+    +'</div>';
+
+  // Right column: timeline + weekly overview
+  var rightCol=
+    '<div class="card" style="border-top:2px solid var(--accent);margin-bottom:12px">'
+      +'<div class="ct">Full Day Timeline<span class="ct-hint">drag to reposition</span></div>'
+      +buildCalendarTimelineHTML(items)
+    +'</div>'
+    +'<div class="card" style="border-top:2px solid var(--accent)">'
+      +'<div class="ct">📆 Weekly</div>'
+      +buildWeeklyViewHTML()
+    +'</div>';
+
+  root.innerHTML=header
+    +'<div style="display:grid;grid-template-columns:minmax(0,2fr) minmax(0,3fr);gap:14px;align-items:start">'
+      +'<div>'+leftCol+'</div>'
+      +'<div>'+rightCol+'</div>'
     +'</div>';
 }
 
