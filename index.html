@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Study Tracker Dashboard</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☕️</text></svg>">
 <!-- PWA -->
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#070d18">
@@ -1021,11 +1022,7 @@ const D = {
   bookItems:  [],   // [{id, book, chapter, isDone}] — chapter-level, populated by syncBooks()
   paperItems: [],   // [{id, collection, name, isDone}] — paper-level, populated by syncPapers()
 
-  work: [
-    {name:'Await for EC',     icon:'🔬', type:'Research',     status:'overdue', label:'Overdue 🔴', due:'23/5/2026', css:'bg-red'},
-    {name:'Topic MSK Slides', icon:'📊', type:'Presentation', status:'soon',    label:'5 days 🔵',  due:'28/5/2026', css:'bg-blue'},
-    {name:'Journal MSK',      icon:'📰', type:'Journal',      status:'done',    label:'Done ✅',    due:'28/5/2026', css:'bg-green'},
-  ],
+  work: [],  // populated by syncAssignments() from the Assignment sheet tab
 };
 
 // ════════════════════════════════════════════════════════
@@ -1404,21 +1401,21 @@ function render() {
   renderStudyConsistency();
 
   // Active Work
-  document.getElementById('work-list').innerHTML = D.work.map(w => {
-    const b = (w.status === 'done' || w.status === 'overdue')
-      ? {css: w.css, label: w.label}
-      : statusBadge(w.due);
-    return `<div class="work-item">
-      <div class="work-top">
-        <span class="work-name">${w.icon} ${w.name}</span>
-        <span class="work-badge ${b.css}">${b.label}</span>
-      </div>
-      <div class="work-meta">
-        <span class="work-type">${w.type}</span>
-        <span>Due: ${w.due}</span>
-      </div>
-    </div>`;
-  }).join('');
+  document.getElementById('work-list').innerHTML = D.work.length
+    ? D.work.map(w => {
+        const b = statusBadge(w.due);
+        return `<div class="work-item">
+          <div class="work-top">
+            <span class="work-name">${w.icon} ${w.name}</span>
+            <span class="work-badge ${b.css}">${b.label}</span>
+          </div>
+          <div class="work-meta">
+            <span class="work-type">${w.type}</span>
+            <span>Due: ${w.due}</span>
+          </div>
+        </div>`;
+      }).join('')
+    : '<div style="font-size:.7rem;color:var(--muted);padding:8px 0">Sync to load assignments ↗</div>';
 
 }
 
@@ -2441,11 +2438,11 @@ document.addEventListener('keydown', e => { if(e.key === 'Escape') closePanel();
 // entries in the sheet appear without any code changes.
 // ════════════════════════════════════════════════════════
 
-function gvizFetch(sheet, fn) {
+function gvizFetch(sheet, fn, extra) {
   const name = 'gviz_' + sheet.replace(/\W/g,'_') + '_' + Date.now();
   window[name] = function(resp) { fn(resp); delete window[name]; };
   const s = document.createElement('script');
-  s.src = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json;responseHandler:${name}&sheet=${encodeURIComponent(sheet)}`;
+  s.src = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json;responseHandler:${name}&sheet=${encodeURIComponent(sheet)}${extra||''}`;
   s.onerror = () => delete window[name];
   document.head.appendChild(s);
 }
@@ -2817,6 +2814,61 @@ function syncDontKnow() {
 // ════════════════════════════════════════════════════════
 // SYNC — reads Sheet1 via gviz JSONP
 // ════════════════════════════════════════════════════════
+function syncAssignments() {
+  // headers=0 → gviz returns EVERY row as data (no header-row guessing),
+  // so we control filtering ourselves regardless of the title/header rows.
+  gvizFetch('Assignment', function(resp) {
+    try {
+      // headers=0 → rows array maps 1:1 to sheet rows, so rows 3–11 = indices 2–10
+      const rows = (resp.table?.rows || []).slice(2, 11);
+      const TYPE_ICON = {
+        'research':'🔬','presentation':'📊','journal':'📰',
+        'case':'🏥','lecture':'🎓','review':'📋','paper':'📄'
+      };
+
+      function parseDue(cell) {
+        if(!cell) return '—';
+        const raw = cell.v;
+        let d = null;
+        if(typeof raw === 'string' && raw.startsWith('Date(')) {
+          const p = raw.replace('Date(','').replace(')','').split(',').map(Number);
+          d = new Date(p[0], p[1], p[2]); // gviz month is already 0-based
+        } else if(raw instanceof Date) {
+          d = raw;
+        } else {
+          // fall back to the formatted string (cell.f) e.g. "10/7/2026"
+          const s = (cell.f || raw || '').toString().trim();
+          const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+          if(m) d = new Date(+m[3], +m[2]-1, +m[1]); // D/M/YYYY
+          else if(s) { const t = new Date(s); if(!isNaN(t)) d = t; }
+        }
+        if(d && !isNaN(d)) return d.getDate()+'/'+(d.getMonth()+1)+'/'+d.getFullYear();
+        return '—';
+      }
+
+      const work = [];
+      for(const row of rows) {
+        if(!row?.c) continue;
+        const nameCell = row.c[0];
+        const name = nameCell && nameCell.v != null ? String(nameCell.v).trim() : '';
+        if(!name) continue;
+        const low = name.toLowerCase();
+        // skip title row + header row
+        if(low === 'item' || low.startsWith('assign')) continue;
+
+        const type = row.c[2] && row.c[2].v != null ? String(row.c[2].v).trim() : '';
+        const due  = parseDue(row.c[1]);
+        const icon = TYPE_ICON[type.toLowerCase()] || '📌';
+        work.push({ name, icon, type: type || 'Assignment', due });
+      }
+
+      D.work = work;
+      render();
+      console.log('Assignment sync done —', work.length, 'items', work);
+    } catch(e) { console.warn('syncAssignments error:', e); }
+  }, '&headers=0');
+}
+
 function syncNow(btn) {
   const b = btn || document.getElementById('sync-btn');
   b.classList.add('syncing');
@@ -2861,12 +2913,13 @@ function syncNow(btn) {
       document.getElementById('sync-time').textContent = new Date().toLocaleTimeString();
       render();
       buildCharts();
-      syncBooks();      // auto-detect books from All Book tab
-      syncPapers();     // auto-detect collections from All Paper tab
-      syncLog();        // overdue & today items from Log tab
-      syncScenarios();  // freshness names from Clinical Scenario tab
-      syncCases();      // case list from Case Accession tab
-      syncDontKnow();   // topics from Discussion tab
+      syncBooks();        // auto-detect books from All Book tab
+      syncPapers();       // auto-detect collections from All Paper tab
+      syncLog();          // overdue & today items from Log tab
+      syncScenarios();    // freshness names from Clinical Scenario tab
+      syncCases();        // case list from Case Accession tab
+      syncDontKnow();     // topics from Discussion tab
+      syncAssignments();  // active work from Assignment tab
       console.log(`Sheet1 sync done — ${hits} fields updated`);
     } catch(e) { console.warn('Sync error:', e); }
   });
