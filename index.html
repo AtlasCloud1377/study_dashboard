@@ -2614,16 +2614,15 @@ function sheetWriteBack(it, dk) {
            + '&name=' + encodeURIComponent(it.name)
            + '&overdue=1';
   } else if (it.slotKey === 'book') {
-    // All Book: match name in col E → write today's date in col G →
-    // run logAllDates → tick matching Log row (all done server-side)
-    params = 'action=completeSource&sheet=' + encodeURIComponent('All Book')
-           + '&name=' + encodeURIComponent(it.name)
-           + (it.done ? '' : '&clear=1');
+    // All Book col G — write today's date, or clear
+    params = it.done
+      ? 'action=dateBook&name='  + encodeURIComponent(it.name)
+      : 'action=clearBook&name=' + encodeURIComponent(it.name);
   } else if (it.slotKey === 'paper') {
-    // All Paper: same flow as book, against the All Paper tab
-    params = 'action=completeSource&sheet=' + encodeURIComponent('All Paper')
-           + '&name=' + encodeURIComponent(it.name)
-           + (it.done ? '' : '&clear=1');
+    // All Paper col G — write today's date, or clear
+    params = it.done
+      ? 'action=datePaper&name='  + encodeURIComponent(it.name)
+      : 'action=clearPaper&name=' + encodeURIComponent(it.name);
   } else if (it.slotKey === 'freshness') {
     // Modality tab col F — write today's date, or clear.
     // We know the exact sheet row (captured at sync), so just send it.
