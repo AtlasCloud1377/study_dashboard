@@ -726,6 +726,7 @@ body.mode-refined #dontknow-kpi-badge{background:rgba(167,139,250,.12) !importan
     <button class="sync-btn" onclick="exportJSON()" title="Export all local data as JSON backup" style="background:transparent;border-color:var(--border)">
       ⬇ Export
     </button>
+    <button class="sync-btn" id="history-btn" onclick="pushHistory()">📤 Push History</button>
     <button class="sync-btn" onclick="syncNow(this)" id="sync-btn">
       <span class="spin">🔄</span> Sync Sheet
     </button>
@@ -996,7 +997,7 @@ function v2SourceLabel(it){
 const SHEET_ID = '1u58YRfh_mT8k7TmGiG_UKzxcS5PDL8JchCm0rjvV8_Y';
 
 // Paste your deployed Apps Script Web App URL here after setup (see sw-writeback.gs)
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbzMPe51T2HORXRXvwuKSasvoy0Teaf4VvddFjhRsqhJVkyv-eTM31v_mXvl8uboXZnP/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbwludyAua7f57rOkFmRH4Qr4DigIa-40iKG-lPxHOPevpwPZ5Lab99b3Mwxl-Knz8bS/exec';
 
 const D = {
   kpi: { overdue:66, today:3, bookRate:0, paperRate:0, bookDone:0, bookTotal:0, paperDone:0, paperTotal:0, cases:43, dontKnow:7 },
@@ -2593,6 +2594,86 @@ function updateRateKPIs() {
 
 // ════════════════════════════════════════════════════════
 // ════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
+// HISTORY PUSH — sends done items for a given day to the
+// "History" tab in Google Sheets (append-only, dedup by date+name).
+// ════════════════════════════════════════════════════════
+var _SECTION_LABELS = {
+  today:'Today Due', overdue:'Clear Overdue', book:'Book Chapter',
+  paper:'Papers', active:'Additional', dontknow:"Don't Know Topics",
+  freshness:'Modality Freshness'
+};
+
+function _itemType(it) {
+  var sk = it.slotKey || '';
+  if (sk === 'book')      return 'All Book';
+  if (sk === 'paper')     return 'All Paper';
+  if (sk === 'dontknow')  return 'Don\'t Know';
+  if (sk === 'freshness') return 'Modality Freshness';
+  if (sk === 'active')    return 'Additional';
+  // today / overdue: sub holds the category (All Book / All Paper / All Daily / All Lecture)
+  return it.sub ? String(it.sub) : '';
+}
+
+function _itemSource(it) {
+  var type = _itemType(it);
+  var norm = function(s){ return String(s||'').toLowerCase().replace(/\s*\(https?:\/\/[^)]+\)/g,'').replace(/\s+/g,' ').trim(); };
+  if (type === 'All Book') {
+    // book slot: sub = book name directly; today/overdue: look up via D.bookItems
+    if (it.slotKey === 'book') return it.sub || '';
+    if (Array.isArray(D.bookItems)) {
+      var hit = D.bookItems.find(function(b){ return norm(b.chapter) === norm(it.name); });
+      return hit ? (hit.book || '') : '';
+    }
+  } else if (type === 'All Paper') {
+    if (it.slotKey === 'paper') return it.sub || '';
+    if (Array.isArray(D.paperItems)) {
+      var hit = D.paperItems.find(function(p){ return norm(p.name) === norm(it.name); });
+      return hit ? (hit.collection || '') : '';
+    }
+  }
+  return '';
+}
+
+function pushHistory(date, silent) {
+  if (!GAS_URL) { if (!silent) alert('GAS_URL not configured.'); return; }
+  var dk = date || todayKey();
+  var done = getV2Items(dk).filter(function(x){ return x.done; });
+  if (!done.length) {
+    if (!silent) alert('No completed items to push for ' + dk + '.');
+    return;
+  }
+  var rows = done.map(function(it){
+    return {
+      date:    dk,
+      name:    it.name || '',
+      section: _SECTION_LABELS[it.slotKey] || it.slotKey || '',
+      type:    _itemType(it),
+      source:  _itemSource(it)
+    };
+  });
+  var params = 'action=logHistory&items=' + encodeURIComponent(JSON.stringify(rows));
+  var btn = document.getElementById('history-btn');
+  if (btn && !silent) { btn.textContent = '⏳ Pushing…'; btn.disabled = true; }
+  fetch(GAS_URL + '?' + params, {mode:'no-cors'})
+    .then(function(){
+      if (btn && !silent) { btn.textContent = '✅ Pushed'; setTimeout(function(){ btn.textContent = '📤 Push History'; btn.disabled = false; }, 2000); }
+    })
+    .catch(function(){
+      if (btn && !silent) { btn.textContent = '📤 Push History'; btn.disabled = false; }
+    });
+}
+
+// Auto-push at 2am rollover: detect when todayKey() changes
+var _lastHistoryDayKey = todayKey();
+setInterval(function(){
+  var current = todayKey();
+  if (current !== _lastHistoryDayKey) {
+    pushHistory(_lastHistoryDayKey, true); // silently push previous day
+    _lastHistoryDayKey = current;
+  }
+}, 60000); // check every minute
+
 // SHEET WRITE-BACK — fires when a checkbox is checked
 // Routes to the Apps Script Web App (GAS_URL) which updates
 // the corresponding Google Sheet cell.
