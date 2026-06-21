@@ -21,7 +21,8 @@
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 /* Prevent iOS Safari from auto-inflating font size of long text blocks */
-html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; overflow-x:hidden; }
+*, *::before, *::after { box-sizing: border-box; }
 
 :root {
   --bg:        #070d18;
@@ -44,7 +45,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 }
 
 html { background:var(--bg); } /* fills Dynamic Island gap with app colour */
-body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; -webkit-font-smoothing:antialiased; }
+body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; -webkit-font-smoothing:antialiased; overflow-x:hidden; }
 .page { max-width:1360px; margin:0 auto; padding:0 28px 72px; }
 
 /* ── Header ── */
@@ -146,6 +147,10 @@ body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color
 /* ── Grid layouts ── */
 .g-three { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:12px; }
 .g2      { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px; }
+/* Allow grid columns to shrink below their content (canvases) so charts don't blow out the layout */
+.g-three > *, .g2 > * { min-width:0; }
+/* Safety: never let a canvas exceed its card */
+.card canvas, .card-btn canvas { max-width:100%; }
 @media(max-width:1100px){ .g-three{ grid-template-columns:1fr 200px } }
 @media(max-width:900px) { .g-three{ grid-template-columns:1fr } .g2{ grid-template-columns:1fr } .source-strip{ grid-template-columns:repeat(2,1fr) } .source-strip .src-item:nth-child(2){ border-right:none } .source-strip .src-item:nth-child(3){ border-top:1px solid var(--border) } .source-strip .src-item:nth-child(4){ border-top:1px solid var(--border); border-right:none } }
 @media(max-width:900px) { .kpi-row{ grid-template-columns:repeat(2,1fr) } }
@@ -595,10 +600,13 @@ body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color
   .logo-sub{display:none;}
   .last-updated{font-size:.55rem;max-width:90px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .header-right{gap:6px;}
-  /* Hide export + mode toggle on mobile */
+  /* Hide export, mode toggle, firebase status on mobile */
   #mode-toggle-btn{display:none;}
+  #fb-status{display:none;}
   .sync-btn[onclick*="exportJSON"]{display:none;}
-  .sync-btn{padding:7px 12px;font-size:.7rem;}
+  /* Buttons: icon-only on mobile — hide text labels */
+  .btn-label{display:none;}
+  .sync-btn{padding:7px 11px;font-size:.9rem;}
 
   /* Tab bar — move to bottom iOS style */
   .tab-bar{
@@ -626,10 +634,7 @@ body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color
   .g2{grid-template-columns:1fr !important;}
   .source-strip{grid-template-columns:1fr !important;}
 
-  /* Refined top layout — stack on mobile */
-  body.mode-refined #top-section-wrap{grid-template-columns:1fr !important;}
-  body.mode-refined #right-column-wrap{display:none !important;}
-  body.mode-refined #heatmap-bottom-card{display:block !important;}
+  /* Refined top layout — overrides are at end of <style> to beat cascade */
 
   /* Planning layout — hide sidebar, full width calendar */
   .plan-wrap{grid-template-columns:1fr !important;}
@@ -702,6 +707,14 @@ body.mode-refined #dontknow-kpi-badge{background:rgba(167,139,250,.12) !importan
 /* Mode toggle button */
 .mode-btn{display:flex;align-items:center;gap:6px;font-size:.7rem;font-weight:600;padding:6px 15px;border-radius:99px;border:1px solid var(--border-lt);background:var(--card);color:var(--muted);cursor:pointer;transition:all .15s;font-family:inherit;}
 .mode-btn:hover{background:var(--card-hov);border-color:var(--accent);color:var(--accent);}
+
+/* ── Mobile refined overrides — must come AFTER general refined styles ── */
+@media(max-width:640px){
+  body.mode-refined #top-section-wrap{grid-template-columns:1fr !important;display:block !important;}
+  body.mode-refined #right-column-wrap{display:none !important;}
+  body.mode-refined #heatmap-bottom-card{display:block !important;}
+  body.mode-refined .kpi-row{grid-template-columns:repeat(2,1fr) !important;gap:8px !important;}
+}
 </style>
 </head>
 <body>
@@ -725,11 +738,11 @@ body.mode-refined #dontknow-kpi-badge{background:rgba(167,139,250,.12) !importan
     <button class="sync-btn" onclick="exportJSON()" title="Export all local data as JSON backup" style="background:transparent;border-color:var(--border)">
       ⬇ Export
     </button>
-    <button class="sync-btn" onclick="openInstructionModal()" title="Study workflow instructions">📖 Instruction</button>
+    <button class="sync-btn" onclick="openInstructionModal()" title="Study workflow instructions">📖<span class="btn-label"> Instruction</span></button>
     <button class="sync-btn" onclick="syncNow(this)" id="sync-btn">
-      <span class="spin">🔄</span> Sync Sheet
+      <span class="spin">🔄</span><span class="btn-label"> Sync Sheet</span>
     </button>
-    <button class="sync-btn" id="history-btn" onclick="pushHistory()">📤 Push History</button>
+    <button class="sync-btn" id="history-btn" onclick="pushHistory()">📤<span class="btn-label"> Push History</span></button>
   </div>
 </header>
 
